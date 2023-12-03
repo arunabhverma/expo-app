@@ -1,22 +1,32 @@
-import { View, Text } from "react-native";
-import { useLocalSearchParams } from "expo-router";
-import React from "react";
-import Animated from "react-native-reanimated";
+import React, { useEffect } from "react";
+import { View, Button } from "react-native";
+import { useNavigation } from "expo-router";
+import { Camera, CameraType } from "expo-camera";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const index = () => {
-  const { uri, name } = useLocalSearchParams();
+  const navigation = useNavigation();
+  const { top } = useSafeAreaInsets();
+
+  useEffect(() => {
+    getRatio();
+  }, []);
+
+  const getRatio = async () => {};
 
   return (
     <View style={{ flex: 1 }}>
-      <Animated.Image
-        key={index.toString()}
+      <View
         style={{
-          flex: 1,
-          objectFit: "cover",
+          marginTop: top,
+          backgroundColor: "red",
+          position: "absolute",
+          zIndex: 1,
         }}
-        source={{ uri: uri }}
-        sharedTransitionTag={name}
-      />
+      >
+        <Button title="Back" onPress={() => navigation.goBack()} />
+      </View>
+      <Camera ratio="16:9" style={{ flex: 1 }} type={CameraType.back} />
     </View>
   );
 };
