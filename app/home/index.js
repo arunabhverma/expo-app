@@ -22,7 +22,7 @@ import {
   BottomSheetBackdrop,
   BottomSheetFlatList,
 } from "@gorhom/bottom-sheet";
-import { Link, useNavigation } from "expo-router";
+import { Link } from "expo-router";
 import { Camera, CameraType } from "expo-camera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
