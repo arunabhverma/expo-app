@@ -25,6 +25,15 @@ import {
 import { Link } from "expo-router";
 import { Camera, CameraType } from "expo-camera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, {
+  BounceIn,
+  BounceOut,
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+  ZoomIn,
+  ZoomOut,
+} from "react-native-reanimated";
 
 const placeholderImage = require("../../assets/icon.png");
 const WIDTH = Dimensions.get("window").width;
@@ -41,7 +50,7 @@ const CustomButton = ({ children, href, ...props }) => {
 const Home = () => {
   const { top } = useSafeAreaInsets();
   const bottomSheetModalRef = useRef();
-  const snapPoints = useMemo(() => ["50%"], []);
+  const snapPoints = useMemo(() => ["50%", "100%"], []);
 
   const [state, setState] = useState({
     imageArray: [],
@@ -177,25 +186,27 @@ const Home = () => {
         <StatusBar style="auto" />
         <BottomSheetModal
           index={0}
+          topInset={top}
           ref={bottomSheetModalRef}
           handleComponent={
             state.selectedImage?.length > 0 ? handleComponent : undefined
           }
           backdropComponent={renderBackdrop}
-          enableDynamicSizing
           snapPoints={snapPoints}
         >
-          <BottomSheetFlatList
-            data={state.imageArray}
-            numColumns={3}
-            keyExtractor={(_, i) => i.toString()}
-            style={styles.listStyle}
-            contentContainerStyle={styles.rowWrapperStyle}
-            columnWrapperStyle={styles.columnWrapperStyle}
-            onEndReached={onEndReached}
-            onEndReachedThreshold={5}
-            renderItem={renderItem}
-          />
+          <View style={{ flex: 1 }}>
+            <BottomSheetFlatList
+              data={state.imageArray}
+              numColumns={3}
+              keyExtractor={(_, i) => i.toString()}
+              style={styles.listStyle}
+              contentContainerStyle={styles.rowWrapperStyle}
+              columnWrapperStyle={styles.columnWrapperStyle}
+              onEndReached={onEndReached}
+              onEndReachedThreshold={5}
+              renderItem={renderItem}
+            />
+          </View>
         </BottomSheetModal>
       </View>
     </BottomSheetModalProvider>
