@@ -101,14 +101,14 @@ const ChatScreen = () => {
       setState((prev) => ({ ...prev, isAnim: false, isSheetOpen: true }));
       bottomSheetModalRef.current?.present();
       // Keyboard.dismiss();
-      setTimeout(() => Keyboard.dismiss(), 500);
-      setTimeout(() => setState((prev) => ({ ...prev, isAnim: true })), 500);
+      setTimeout(() => Keyboard.dismiss(), 450);
+      setTimeout(() => setState((prev) => ({ ...prev, isAnim: true })), 450);
     }
     if (state.isSheetOpen && state.isAnim === true) {
       setState((prev) => ({ ...prev, isAnim: false }));
       inputRef.current.focus();
       setState((prev) => ({ ...prev, isSheetOpen: false }));
-      setTimeout(() => bottomSheetModalRef.current.dismiss(), 500);
+      setTimeout(() => bottomSheetModalRef.current.dismiss(), 450);
     }
     if (!isKeyboardOpen && !state.isSheetOpen) {
       setState((prev) => ({
@@ -116,6 +116,22 @@ const ChatScreen = () => {
         isSheetOpen: true,
       }));
       bottomSheetModalRef.current.present();
+    }
+  };
+
+  const onFocus = () => {
+    if (state.isSheetOpen && state.isAnim === true) {
+      setState((prev) => ({ ...prev, isAnim: false }));
+      inputRef.current.focus();
+      setState((prev) => ({ ...prev, isSheetOpen: false }));
+      setTimeout(() => bottomSheetModalRef.current.dismiss(), 450);
+    }
+  };
+
+  const onBlur = () => {
+    let isKeyboardOpen = keyboard.state.value === 2;
+    if (isKeyboardOpen && state.isAnim === false) {
+      setState((prev) => ({ ...prev, isAnim: true }));
     }
   };
 
@@ -170,7 +186,9 @@ const ChatScreen = () => {
             <TextInput
               ref={inputRef}
               placeholder="Message"
-              showSoftInputOnFocus={true}
+              // showSoftInputOnFocus={true}
+              onFocus={onFocus}
+              onBlur={onBlur}
               value={state.text}
               onSubmitEditing={() => sendMsg()}
               onChangeText={(e) => setState((prev) => ({ ...prev, text: e }))}
