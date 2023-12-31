@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,9 @@ import {
   Pressable,
   Platform,
   Dimensions,
+  BackHandler,
   FlatList,
+  Alert,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { Entypo } from "@expo/vector-icons";
@@ -47,6 +49,20 @@ const ChatScreen = () => {
   const [keyboardHeight, setKeyboardHeight] = useState(
     Platform.OS === "android" ? 288 : 335
   );
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (bottomSheetModalRef && state.isSheetOpen) {
+        bottomSheetModalRef?.current?.dismiss();
+        setState((prev) => ({ ...prev, isSheetOpen: false, isEmoji: true }));
+      }
+    };
+
+    BackHandler.addEventListener("hardwareBackPress", onBackPress);
+
+    return () =>
+      BackHandler.removeEventListener("hardwareBackPress", onBackPress);
+  }, [bottomSheetModalRef, state.isSheetOpen]);
 
   useDerivedValue(() => {
     if (keyboard.state.value === 2) {
@@ -197,6 +213,11 @@ const ChatScreen = () => {
           <View style={styles.inputWrapper}>
             {state.isEmoji ? (
               <Pressable
+                android_ripple={{
+                  color: "rgba(0, 0, 0, 0.1)",
+                  foreground: true,
+                  borderless: true,
+                }}
                 style={{ backgroundColor: "transparent", padding: 5 }}
                 onPress={() => openEmojiSheet(state.isEmoji)}
               >
@@ -204,6 +225,11 @@ const ChatScreen = () => {
               </Pressable>
             ) : (
               <Pressable
+                android_ripple={{
+                  color: "rgba(0, 0, 0, 0.1)",
+                  foreground: true,
+                  borderless: true,
+                }}
                 style={{ backgroundColor: "transparent", padding: 5 }}
                 onPress={() => openKeyboard(state.isEmoji)}
               >
