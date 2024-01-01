@@ -1,168 +1,97 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
-  Keyboard,
-  TextInput,
-  Pressable,
   Platform,
-  Dimensions,
-  FlatList,
+  TextInput,
+  VirtualizedList,
+  Keyboard,
+  Button,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
-import { Entypo } from "@expo/vector-icons";
-import Animated, {
-  runOnJS,
-  useAnimatedKeyboard,
-  useAnimatedStyle,
-  useDerivedValue,
-  useSharedValue,
-} from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BottomSheetFlatList, BottomSheetModal } from "@gorhom/bottom-sheet";
 import ChatDATA from "../../mock/chatData";
-import { EMOJI_DATA, CategoryTranslation } from "../../mock/emojiData";
-
-const HEIGHT = Dimensions.get("window").height;
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
+import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
+import { useKeyboard } from "../../hooks/useKeyboard";
+import EmojiKeyboard from "./emojiKeyboard";
+import CustomTextInput from "./customTextInput";
 
 const ChatScreen = () => {
-  const { top } = useSafeAreaInsets();
-  const scrollRef = useRef();
-  const inputRef = useRef();
-  const bottomSheetModalRef = useRef();
-  const animatedPosition = useSharedValue(HEIGHT);
-  const keyboard = useAnimatedKeyboard();
-  const isKeyboardOpen = keyboard.state.value === 2;
+  const listRef = useRef(null);
+  const inputRef = useRef(null);
+  const inputContainerRef = useRef(null);
+  const emojiViewHeight = useSharedValue(0);
+  const isKeyboardOpen = useKeyboard();
+
+  const { height } = useReanimatedKeyboardAnimation();
+
   const [state, setState] = useState({
     text: "",
     data: ChatDATA,
-    keyboardHeight: Platform.OS === "android" ? 288 : 335,
-    isSheetOpen: false,
-    isAnim: true,
-    isEmoji: true,
+    emojiView: false,
+    keyboardHeight: 0,
   });
 
-  const [keyboardHeight, setKeyboardHeight] = useState(
-    Platform.OS === "android" ? 288 : 335
-  );
-
-  useDerivedValue(() => {
-    if (keyboard.state.value === 2) {
-      runOnJS(setKeyboardHeight)(keyboard?.height?.value);
+  useEffect(() => {
+    if (isKeyboardOpen.open) {
+      let val = isKeyboardOpen?.endCoordinates?.height;
+      setState((prev) => ({ ...prev, keyboardHeight: val }));
     }
-  }, [state, keyboard.height.value, keyboard.state.value]);
+  }, [isKeyboardOpen.open]);
 
-  const snapPoints = [keyboardHeight, "100%"];
+  const getItem = (_data, index) => _data[index];
 
-  const translateStyle = useAnimatedStyle(() => {
-    let sheetAnimValue = HEIGHT - animatedPosition.value;
-    let animVal = sheetAnimValue;
-    // let animVal = keyboard.height.value;
-    return {
-      transform: [{ translateY: -animVal }],
-    };
-  });
-
-  const flatListAnimatedStyle = useAnimatedStyle(() => {
-    let sheetAnimValue = HEIGHT - animatedPosition.value;
-    let animVal = sheetAnimValue;
-    // let animVal = keyboard.height.value;
-
-    return {
-      marginBottom: animVal,
-    };
-  });
+  const getItemCount = (_data) => _data?.length;
 
   const sendMsg = () => {
-    if (state.text?.trim()?.length > 0) {
-      let data = {
-        uId: 1,
-        msg: state.text,
-      };
-      setState((prev) => ({ ...prev, text: "", data: [...prev.data, data] }));
-      scrollRef.current.scrollToIndex({
-        index: state.data?.length - 1,
-        animated: true,
-      });
-    }
+    setState((prev) => ({
+      ...prev,
+      data: [{ msg: prev.text, uId: 1 }, ...prev.data],
+      text: "",
+    }));
+
+    listRef.current.scrollToOffset({ offset: 0, animated: false });
   };
 
-  const openEmojiSheet = () => {
-    setState((prev) => ({ ...prev, isEmoji: false }));
-    bottomSheetModalRef.current.present();
-    Keyboard.dismiss();
+  const animatedWrapper = useAnimatedStyle(() => {
+    let keyboardHeight = height.value;
+    return {
+      height: -keyboardHeight,
+    };
+  }, []);
+
+  const animatedWrapperTwo = useAnimatedStyle(() => {
+    let keyboardHeight = emojiViewHeight.value;
+    return {
+      height: -keyboardHeight,
+    };
+  }, [state.emojiView, emojiViewHeight.value]);
+
+  const openEmoji = () => {
+    if (isKeyboardOpen.open) {
+      setState((prev) => ({ ...prev, emojiView: true }));
+      Keyboard.dismiss();
+      emojiViewHeight.value = height.value;
+    } else {
+      setState((prev) => ({ ...prev, emojiView: true }));
+      emojiViewHeight.value = withTiming(-state.keyboardHeight);
+    }
   };
 
   const openKeyboard = () => {
-    setState((prev) => ({ ...prev, isEmoji: true }));
     inputRef.current.focus();
+    setTimeout(() => {
+      setState((prev) => ({ ...prev, emojiView: false }));
+      emojiViewHeight.value = 0;
+    }, 300);
   };
 
-  const onDismiss = () => {
-    setState((prev) => ({ ...prev, isEmoji: true }));
-  };
-
-  const onFocus = () => {
-    if (!state.isSheetOpen) {
-      bottomSheetModalRef.current.present();
-    }
-    if (state.isSheetOpen && !isKeyboardOpen) {
-      setState((prev) => ({ ...prev, isEmoji: true }));
-    }
-  };
-
-  const onBlur = () => {
-    if (isKeyboardOpen && state.isSheetOpen && !state.isEmoji) {
-    } else {
-      bottomSheetModalRef.current.dismiss();
-    }
-  };
-
-  const RenderSingleEmoji = useCallback(({ item, index, setEmoji }) => {
-    return (
-      <Pressable
-        key={index.toString()}
-        onPressIn={() => setEmoji(item.emoji)}
-        android_ripple={{
-          color: "rgba(0, 0, 0, 0.1)",
-          foreground: true,
-          borderless: false,
-        }}
-        style={{
-          width: Dimensions.get("window").width / 9,
-          height: Dimensions.get("window").width / 9,
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <Text style={{ fontSize: 25 }}>{item.emoji}</Text>
-      </Pressable>
-    );
-  }, []);
-
-  const RenderEmoji = useCallback(({ item: { title, data }, setEmoji }) => {
-    return (
-      <View>
-        <Text>{CategoryTranslation[title]}</Text>
-        <FlatList
-          data={data}
-          numColumns={9}
-          removeClippedSubviews={Platform.OS === "android"}
-          initialNumToRender={10}
-          maxToRenderPerBatch={5}
-          windowSize={16}
-          keyExtractor={(_, i) => i.toString()}
-          renderItem={(props) => (
-            <RenderSingleEmoji {...props} setEmoji={setEmoji} />
-          )}
-        />
-      </View>
-    );
-  }, []);
-
-  const renderItem = ({ item, index }) => {
+  const renderItem = ({ item }) => {
     let isUser = item.uId === 1;
     return (
       <View style={[styles.msgWrapper, isUser && styles.userMsgWrapper]}>
@@ -179,97 +108,83 @@ const ChatScreen = () => {
   };
 
   return (
-    <View style={[{ flex: 1 }]}>
-      <Animated.FlatList
-        ref={scrollRef}
+    <SafeAreaView style={[{ flex: 1 }]}>
+      <VirtualizedList
+        ref={listRef}
         inverted
-        data={state.data}
-        contentContainerStyle={[
-          styles.flatListStyle,
-          Platform.OS === "android" && { transform: [{ scaleX: -1 }] },
+        data={[
+          ...state.data,
+          ...state.data,
+          ...state.data,
+          ...state.data,
+          ...state.data,
+          ...state.data,
+          ...state.data,
+          ...state.data,
+          ...state.data,
+          ...state.data,
+          ...state.data,
+          ...state.data,
         ]}
-        style={[{ flex: 1 }, flatListAnimatedStyle]}
+        extraData={state.data}
+        removeClippedSubviews={Platform.OS === "android"}
+        initialNumToRender={10}
+        getItemCount={getItemCount}
+        getItem={getItem}
+        maxToRenderPerBatch={5}
+        windowSize={16}
+        contentContainerStyle={[styles.flatListStyle]}
+        style={[{ flex: 1, transform: [{ scale: -1 }] }]}
         renderItem={renderItem}
         keyExtractor={(_, i) => i.toString()}
       />
-      <Animated.View style={translateStyle}>
-        <SafeAreaView style={{ backgroundColor: "white" }}>
-          <View style={styles.inputWrapper}>
-            {state.isEmoji ? (
-              <Pressable
-                style={{ backgroundColor: "transparent", padding: 5 }}
-                onPress={() => openEmojiSheet(state.isEmoji)}
-              >
-                <Entypo name="emoji-flirt" size={24} color="dimgrey" />
-              </Pressable>
-            ) : (
-              <Pressable
-                style={{ backgroundColor: "transparent", padding: 5 }}
-                onPress={() => openKeyboard(state.isEmoji)}
-              >
-                <Entypo name="keyboard" size={24} color="dimgrey" />
-              </Pressable>
-            )}
-            <TextInput
-              ref={inputRef}
-              placeholder="Message"
-              onFocus={onFocus}
-              onBlur={onBlur}
-              value={state.text}
-              onSubmitEditing={() => {
-                sendMsg();
-                bottomSheetModalRef.current.dismiss();
-              }}
-              onChangeText={(e) => setState((prev) => ({ ...prev, text: e }))}
-              style={styles.textInput}
-            />
-            {state.text?.trim()?.length > 0 && (
-              <Pressable
-                style={{ backgroundColor: "transparent", padding: 5 }}
-                onPress={() => sendMsg()}
-              >
-                <Feather name="send" size={24} color="royalblue" />
-              </Pressable>
-            )}
-          </View>
-        </SafeAreaView>
-        <BottomSheetModal
-          topInset={top}
-          ref={bottomSheetModalRef}
-          animatedPosition={animatedPosition}
-          enablePanDownToClose
-          handleIndicatorStyle={[
-            isKeyboardOpen || state.isSheetOpen || !state.isEmoji
-              ? { backgroundColor: "rgba(0, 0, 0, 0.1)" }
-              : { backgroundColor: "transparent" },
-          ]}
-          onChange={(e) =>
-            setState((prev) => ({
-              ...prev,
-              isSheetOpen: e >= 0 ? true : false,
-            }))
+      <CustomTextInput
+        ref={inputRef}
+        onFocus={openKeyboard}
+        value={state.text}
+        onChangeText={(e) => setState((prev) => ({ ...prev, text: e }))}
+        isEmoji={state.emojiView}
+        onSend={sendMsg}
+        onEmoji={openEmoji}
+        onKeyboard={openKeyboard}
+      />
+      {/* <Animated.View
+        ref={inputContainerRef}
+        style={{
+          paddingVertical: 10,
+          backgroundColor: "red",
+        }}
+      >
+        <TextInput
+          ref={inputRef}
+          value={state.text}
+          onFocus={openKeyboard}
+          onChangeText={(e) => setState((prev) => ({ ...prev, text: e }))}
+          style={{ height: 100, backgroundColor: "blue" }}
+        />
+        <Button title={"push"} onPress={sendMsg} />
+        {state.emojiView ? (
+          <Button title={"Open Keyboard"} onPress={openKeyboard} />
+        ) : (
+          <Button title={"Open Emoji"} onPress={openEmoji} />
+        )}
+      </Animated.View> */}
+      <Animated.View
+        style={[
+          {
+            width: "100%",
+            backgroundColor: "orange",
+          },
+          state.emojiView ? animatedWrapperTwo : animatedWrapper,
+        ]}
+      >
+        <EmojiKeyboard
+          onEmoji={(e) =>
+            setState((prev) => ({ ...prev, text: prev.text + e }))
           }
-          onDismiss={onDismiss}
-          snapPoints={snapPoints}
-        >
-          <BottomSheetFlatList
-            data={EMOJI_DATA}
-            removeClippedSubviews={Platform.OS === "android"}
-            initialNumToRender={1}
-            maxToRenderPerBatch={1}
-            keyExtractor={(_, i) => i.toString()}
-            renderItem={(props) => (
-              <RenderEmoji
-                {...props}
-                setEmoji={(e) =>
-                  setState((prev) => ({ ...prev, text: prev.text + e }))
-                }
-              />
-            )}
-          />
-        </BottomSheetModal>
+        />
       </Animated.View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -296,25 +211,11 @@ const styles = StyleSheet.create({
   },
   flatListStyle: {
     flexGrow: 1,
-    flexDirection: "column-reverse",
     paddingLeft: 20,
     paddingRight: 20,
     paddingBottom: 20,
     paddingTop: 20,
     gap: 5,
-  },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    margin: 10,
-  },
-  textInput: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
-    padding: 10,
-    paddingLeft: 15,
-    borderRadius: 15,
-    fontSize: 18,
   },
 });
 
