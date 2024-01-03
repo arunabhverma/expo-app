@@ -5,10 +5,9 @@ import {
   StyleSheet,
   SafeAreaView,
   Platform,
-  TextInput,
   VirtualizedList,
   Keyboard,
-  Button,
+  Dimensions,
 } from "react-native";
 import ChatDATA from "../../mock/chatData";
 import Animated, {
@@ -24,7 +23,6 @@ import CustomTextInput from "./customTextInput";
 const ChatScreen = () => {
   const listRef = useRef(null);
   const inputRef = useRef(null);
-  const inputContainerRef = useRef(null);
   const emojiViewHeight = useSharedValue(0);
   const isKeyboardOpen = useKeyboard();
 
@@ -101,7 +99,7 @@ const ChatScreen = () => {
             isUser ? styles.userBubble : styles.otherBubble,
           ]}
         >
-          <Text>{item.msg}</Text>
+          <Text style={styles.msgStyle}>{item.msg}</Text>
         </View>
       </View>
     );
@@ -148,32 +146,11 @@ const ChatScreen = () => {
         onEmoji={openEmoji}
         onKeyboard={openKeyboard}
       />
-      {/* <Animated.View
-        ref={inputContainerRef}
-        style={{
-          paddingVertical: 10,
-          backgroundColor: "red",
-        }}
-      >
-        <TextInput
-          ref={inputRef}
-          value={state.text}
-          onFocus={openKeyboard}
-          onChangeText={(e) => setState((prev) => ({ ...prev, text: e }))}
-          style={{ height: 100, backgroundColor: "blue" }}
-        />
-        <Button title={"push"} onPress={sendMsg} />
-        {state.emojiView ? (
-          <Button title={"Open Keyboard"} onPress={openKeyboard} />
-        ) : (
-          <Button title={"Open Emoji"} onPress={openEmoji} />
-        )}
-      </Animated.View> */}
       <Animated.View
         style={[
           {
             width: "100%",
-            backgroundColor: "orange",
+            backgroundColor: "rgba(0, 0, 0, 0.1)",
           },
           state.emojiView ? animatedWrapperTwo : animatedWrapper,
         ]}
@@ -196,10 +173,11 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   msgBubble: {
-    maxWidth: "70%",
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    maxWidth: Dimensions.get("window").width * 0.8,
+    borderRadius: 15,
+    paddingVertical: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
   otherBubble: {
     backgroundColor: "rgba(0, 0, 0, 0.1)",
@@ -211,11 +189,14 @@ const styles = StyleSheet.create({
   },
   flatListStyle: {
     flexGrow: 1,
-    paddingLeft: 20,
-    paddingRight: 20,
+    paddingLeft: 5,
+    paddingRight: 5,
     paddingBottom: 20,
     paddingTop: 20,
     gap: 5,
+  },
+  msgStyle: {
+    fontSize: 17,
   },
 });
 
