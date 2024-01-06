@@ -183,7 +183,7 @@ const Home = () => {
           title={"Select Image"}
           onPress={() => bottomSheetModalRef.current?.present()}
         />
-        <StatusBar style="auto" />
+        <StatusBar style="dark" />
         <BottomSheetModal
           index={0}
           topInset={top}
