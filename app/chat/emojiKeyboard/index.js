@@ -1,105 +1,83 @@
 import React, { useState } from "react";
-import {
-  Dimensions,
-  FlatList,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Dimensions, StyleSheet, Text, View } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { EMOJI_DATA, CategoryTranslation } from "../../../mock/emojiData";
 import PressableOpacity from "../../../components/PressableOpacity";
-import { useEffect } from "react";
 
-const EMOJI_WIDTH = Dimensions.get("window").width / 9;
-const EMOJI_ROW = 100 / 9;
-const EMOJI_ROW_HEIGHT = EMOJI_ROW * EMOJI_WIDTH;
-const isAndroid = Platform.OS === "android";
+const BLOCK_COUNT = 9;
+const EMOJI_WIDTH = Dimensions.get("window").width / BLOCK_COUNT;
 
-const EmojiKeyboard = React.memo(({ onEmoji }) => {
-  const [state, setState] = useState({
-    index: 0,
-    data: EMOJI_DATA,
-  });
+const EMOJI_SIZE_PER_BLOCK = [
+  { total: 145, height: 824 },
+  { total: 291, height: 1555 },
+  { total: 121, height: 686 },
+  { total: 111, height: 641 },
+  { total: 204, height: 1098 },
+  { total: 76, height: 458 },
+  { total: 217, height: 1189 },
+  { total: 207, height: 1098 },
+  { total: 268, height: 1418 },
+];
 
-  const getItemLayoutTwo = React.useCallback(
-    (_, index) => ({
-      length: EMOJI_WIDTH,
-      offset: EMOJI_WIDTH * Math.ceil(index / 9),
-      index,
-    }),
-    []
-  );
-
-  const getItemLayout = React.useCallback((_, index) => {
-    return {
-      length: EMOJI_ROW_HEIGHT,
-      offset: EMOJI_ROW_HEIGHT * index,
-      index,
-    };
-  }, []);
-
-  // useEffect(() => {
-  //   updateData();
-  // }, []);
-
-  // const updateData = (id = 0) => {
-  //   if (id <= EMOJI_DATA?.length) {
-  //     setState((prev) => ({
-  //       ...prev,
-  //       data: [...prev.data, EMOJI_DATA[id]],
-  //       index: prev.index + 1,
-  //     }));
-  //   }
-  // };
-
-  // console.log("data", state.index);
-
+const EmojiKeyboard = React.memo(({ onEmoji, keyboardHeight }) => {
   const EmojiItem = React.memo(({ item, index, sendEmoji }) => {
     return (
-      <TouchableOpacity
+      <PressableOpacity
         onPress={() => sendEmoji(item.emoji)}
         style={styles.emojiWrapper}
       >
         <Text style={styles.emojiStyle}>{item.emoji}</Text>
-      </TouchableOpacity>
+      </PressableOpacity>
     );
   });
 
-  const EmojiList = React.memo(({ item, index, sendEmoji }) => {
+  const EmojiList = ({ item, index, sendEmoji }) => {
     return (
-      <View>
-        <Text>{CategoryTranslation[item.title]}</Text>
-        <FlatList
+      <View
+        style={{
+          height: EMOJI_SIZE_PER_BLOCK[index].height,
+          width: Dimensions.get("screen").width,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 15,
+            color: "dimgrey",
+            fontWeight: "600",
+            marginHorizontal: 10,
+            marginBottom: 10,
+            marginTop: 20,
+          }}
+        >
+          {CategoryTranslation[item.title]}
+        </Text>
+        <FlashList
           scrollEnabled={false}
-          numColumns={9}
+          numColumns={BLOCK_COUNT}
           data={item.data}
+          estimatedItemSize={EMOJI_SIZE_PER_BLOCK[index].total}
           keyExtractor={(_, i) => `${i}${index}`}
           renderItem={(props) => <EmojiItem {...props} sendEmoji={sendEmoji} />}
-          initialNumToRender={10}
-          windowSize={16}
-          maxToRenderPerBatch={5}
-          getItemLayout={getItemLayoutTwo}
         />
       </View>
     );
-  });
+  };
 
   return (
     <View>
-      {/* <FlatList
-        data={state.data}
-        extraData={state.index}
-        keyExtractor={(_, i) => i.toString()}
-        renderItem={(props) => <EmojiList {...props} sendEmoji={onEmoji} />}
-        initialNumToRender={1}
-        maxToRenderPerBatch={1}
-        getItemLayout={getItemLayout}
-        removeClippedSubviews={isAndroid}
-      /> */}
-
-      <Text>Hello world!</Text>
+      <View
+        style={{
+          height: keyboardHeight,
+          width: Dimensions.get("screen").width,
+        }}
+      >
+        <FlashList
+          data={EMOJI_DATA}
+          keyExtractor={(_, i) => i.toString()}
+          estimatedItemSize={9}
+          renderItem={(props) => <EmojiList {...props} sendEmoji={onEmoji} />}
+        />
+      </View>
     </View>
   );
 });

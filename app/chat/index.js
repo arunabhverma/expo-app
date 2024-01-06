@@ -13,17 +13,20 @@ import ChatDATA from "../../mock/chatData";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
   withTiming,
 } from "react-native-reanimated";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import { useKeyboard } from "../../hooks/useKeyboard";
 import EmojiKeyboard from "./emojiKeyboard";
 import CustomTextInput from "./customTextInput";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 const ChatScreen = () => {
   const listRef = useRef(null);
   const inputRef = useRef(null);
   const emojiViewHeight = useSharedValue(0);
+  const offset = useSharedValue(0);
   const isKeyboardOpen = useKeyboard();
 
   const { height } = useReanimatedKeyboardAnimation();
@@ -55,6 +58,19 @@ const ChatScreen = () => {
 
     listRef.current.scrollToOffset({ offset: 0, animated: false });
   };
+
+  const swipeGesture = Gesture.Pan()
+    .onBegin(() => {})
+    .onChange((event) => {
+      offset.value += event.changeY;
+    })
+    .onFinalize(() => {});
+
+  const swipeAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: offset.value }],
+    };
+  });
 
   const animatedWrapper = useAnimatedStyle(() => {
     let keyboardHeight = height.value;
@@ -146,21 +162,27 @@ const ChatScreen = () => {
         onEmoji={openEmoji}
         onKeyboard={openKeyboard}
       />
+      {/* <GestureDetector gesture={swipeGesture}> */}
       <Animated.View
         style={[
           {
             width: "100%",
-            backgroundColor: "rgba(0, 0, 0, 0.1)",
+            backgroundColor: "white",
           },
           state.emojiView ? animatedWrapperTwo : animatedWrapper,
+          // swipeAnimatedStyle,
         ]}
       >
-        <EmojiKeyboard
-          onEmoji={(e) =>
-            setState((prev) => ({ ...prev, text: prev.text + e }))
-          }
-        />
+        {state.emojiView && (
+          <EmojiKeyboard
+            keyboardHeight={-emojiViewHeight.value}
+            onEmoji={(e) =>
+              setState((prev) => ({ ...prev, text: prev.text + e }))
+            }
+          />
+        )}
       </Animated.View>
+      {/* </GestureDetector> */}
     </SafeAreaView>
   );
 };
@@ -178,13 +200,23 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     paddingVertical: 8,
     paddingHorizontal: 16,
+
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.18,
+    shadowRadius: 1.0,
+
+    elevation: 1,
   },
   otherBubble: {
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    backgroundColor: "white",
     borderBottomLeftRadius: 0,
   },
   userBubble: {
-    backgroundColor: "rgba(0, 0, 255, 0.1)",
+    backgroundColor: "rgb(230,230,255)",
     borderBottomRightRadius: 0,
   },
   flatListStyle: {
