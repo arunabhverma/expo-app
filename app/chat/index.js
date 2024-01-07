@@ -11,9 +11,9 @@ import {
 } from "react-native";
 import ChatDATA from "../../mock/chatData";
 import Animated, {
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming,
 } from "react-native-reanimated";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
@@ -21,13 +21,22 @@ import { useKeyboard } from "../../hooks/useKeyboard";
 import EmojiKeyboard from "./emojiKeyboard";
 import CustomTextInput from "./customTextInput";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { useHeaderHeight } from "@react-navigation/elements";
+import { StatusBar } from "expo-status-bar";
+
+const AnimatedVirtualizedList =
+  Animated.createAnimatedComponent(VirtualizedList);
+
+const HEIGHT = Dimensions.get("window").height;
 
 const ChatScreen = () => {
   const listRef = useRef(null);
   const inputRef = useRef(null);
   const emojiViewHeight = useSharedValue(0);
-  const offset = useSharedValue(0);
   const isKeyboardOpen = useKeyboard();
+  const headerHeight = useHeaderHeight();
+  const EXPANDABLE_HEIGHT = HEIGHT - (38 + 3 + 14 + headerHeight);
+  const HALF_EXPANDABLE_HEIGHT = EXPANDABLE_HEIGHT / 2;
 
   const { height } = useReanimatedKeyboardAnimation();
 
@@ -62,15 +71,29 @@ const ChatScreen = () => {
   const swipeGesture = Gesture.Pan()
     .onBegin(() => {})
     .onChange((event) => {
-      offset.value += event.changeY;
+      if (-emojiViewHeight.value > EXPANDABLE_HEIGHT) {
+        emojiViewHeight.value = -EXPANDABLE_HEIGHT;
+      } else {
+        emojiViewHeight.value += event.changeY;
+      }
+    })
+    .onEnd((event) => {
+      if (event.absoluteY < HALF_EXPANDABLE_HEIGHT) {
+        emojiViewHeight.value = withTiming(-EXPANDABLE_HEIGHT);
+      } else if (event.absoluteY < HEIGHT - state.keyboardHeight) {
+        emojiViewHeight.value = withTiming(-state.keyboardHeight);
+      } else if (
+        event.absoluteY <
+        HEIGHT - (EXPANDABLE_HEIGHT - state.keyboardHeight) / 3
+      ) {
+        emojiViewHeight.value = withTiming(-state.keyboardHeight);
+      } else {
+        emojiViewHeight.value = withTiming(0, undefined, () =>
+          runOnJS(setState)({ ...state, emojiView: false })
+        );
+      }
     })
     .onFinalize(() => {});
-
-  const swipeAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ translateY: offset.value }],
-    };
-  });
 
   const animatedWrapper = useAnimatedStyle(() => {
     let keyboardHeight = height.value;
@@ -98,14 +121,15 @@ const ChatScreen = () => {
   };
 
   const openKeyboard = () => {
+    emojiViewHeight.value = withTiming(-state.keyboardHeight);
     inputRef.current.focus();
     setTimeout(() => {
       setState((prev) => ({ ...prev, emojiView: false }));
-      emojiViewHeight.value = 0;
+      emojiViewHeight.value = withTiming(0);
     }, 300);
   };
 
-  const renderItem = ({ item }) => {
+  const renderItem = ({ item, index }) => {
     let isUser = item.uId === 1;
     return (
       <View style={[styles.msgWrapper, isUser && styles.userMsgWrapper]}>
@@ -123,7 +147,8 @@ const ChatScreen = () => {
 
   return (
     <SafeAreaView style={[{ flex: 1 }]}>
-      <VirtualizedList
+      <StatusBar style="dark" />
+      <AnimatedVirtualizedList
         ref={listRef}
         inverted
         data={[
@@ -148,7 +173,7 @@ const ChatScreen = () => {
         maxToRenderPerBatch={5}
         windowSize={16}
         contentContainerStyle={[styles.flatListStyle]}
-        style={[{ flex: 1, transform: [{ scale: -1 }] }]}
+        style={{ flex: 1, transform: [{ scale: -1 }] }}
         renderItem={renderItem}
         keyExtractor={(_, i) => i.toString()}
       />
@@ -162,27 +187,25 @@ const ChatScreen = () => {
         onEmoji={openEmoji}
         onKeyboard={openKeyboard}
       />
-      {/* <GestureDetector gesture={swipeGesture}> */}
-      <Animated.View
-        style={[
-          {
-            width: "100%",
-            backgroundColor: "white",
-          },
-          state.emojiView ? animatedWrapperTwo : animatedWrapper,
-          // swipeAnimatedStyle,
-        ]}
-      >
-        {state.emojiView && (
-          <EmojiKeyboard
-            keyboardHeight={-emojiViewHeight.value}
-            onEmoji={(e) =>
-              setState((prev) => ({ ...prev, text: prev.text + e }))
-            }
-          />
-        )}
-      </Animated.View>
-      {/* </GestureDetector> */}
+      <GestureDetector gesture={swipeGesture}>
+        <Animated.View
+          style={[
+            styles.swipeableView,
+            state.emojiView ? animatedWrapperTwo : animatedWrapper,
+          ]}
+        >
+          <View style={styles.sheetHandle}>
+            <View style={styles.handle} />
+          </View>
+          {state.emojiView && (
+            <EmojiKeyboard
+              onEmoji={(e) =>
+                setState((prev) => ({ ...prev, text: prev.text + e }))
+              }
+            />
+          )}
+        </Animated.View>
+      </GestureDetector>
     </SafeAreaView>
   );
 };
@@ -213,22 +236,50 @@ const styles = StyleSheet.create({
   },
   otherBubble: {
     backgroundColor: "white",
-    borderBottomLeftRadius: 0,
+    borderTopLeftRadius: 0,
   },
   userBubble: {
     backgroundColor: "rgb(230,230,255)",
-    borderBottomRightRadius: 0,
+    borderTopRightRadius: 0,
   },
   flatListStyle: {
     flexGrow: 1,
-    paddingLeft: 5,
-    paddingRight: 5,
-    paddingBottom: 20,
-    paddingTop: 20,
-    gap: 5,
+    paddingLeft: 10,
+    paddingRight: 10,
+    paddingBottom: 10,
+    paddingTop: 5,
+    gap: 10,
   },
   msgStyle: {
     fontSize: 17,
+  },
+  swipeableView: {
+    width: "100%",
+    backgroundColor: "white",
+    overflow: "hidden",
+  },
+  buttonOverFlow: {
+    borderRadius: 100,
+    overflow: "hidden",
+    width: 38,
+    height: 38,
+  },
+  buttonStyle: {
+    justifyContent: "center",
+    alignItems: "center",
+    flex: 1,
+  },
+  sheetHandle: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  handle: {
+    width: 40,
+    height: 5,
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+    borderRadius: 10,
+    marginTop: 10,
+    marginBottom: 12,
   },
 });
 

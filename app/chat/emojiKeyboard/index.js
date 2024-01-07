@@ -1,91 +1,85 @@
-import React, { useState } from "react";
-import { Dimensions, StyleSheet, Text, View } from "react-native";
-import { FlashList } from "@shopify/flash-list";
+import React, { useCallback, useLayoutEffect } from "react";
+import {
+  Dimensions,
+  StyleSheet,
+  Text,
+  View,
+  VirtualizedList,
+} from "react-native";
+import { FlatList, ScrollView } from "react-native-gesture-handler";
 import { EMOJI_DATA, CategoryTranslation } from "../../../mock/emojiData";
 import PressableOpacity from "../../../components/PressableOpacity";
 
 const BLOCK_COUNT = 9;
 const EMOJI_WIDTH = Dimensions.get("window").width / BLOCK_COUNT;
 
-const EMOJI_SIZE_PER_BLOCK = [
-  { total: 145, height: 824 },
-  { total: 291, height: 1555 },
-  { total: 121, height: 686 },
-  { total: 111, height: 641 },
-  { total: 204, height: 1098 },
-  { total: 76, height: 458 },
-  { total: 217, height: 1189 },
-  { total: 207, height: 1098 },
-  { total: 268, height: 1418 },
-];
+const EmojiKeyboard = ({ onEmoji }) => {
+  const getItem = useCallback((_data, index) => _data[index], []);
+  const getItemCount = useCallback((_data) => _data?.length, []);
 
-const EmojiKeyboard = React.memo(({ onEmoji, keyboardHeight }) => {
-  const EmojiItem = React.memo(({ item, index, sendEmoji }) => {
+  const keyExtractor = useCallback((item) => item.title, []);
+  const keyExtractorEmoji = useCallback((item) => item.name, []);
+
+  const renderItemEmoji = useCallback(({ item }) => {
     return (
       <PressableOpacity
-        onPress={() => sendEmoji(item.emoji)}
-        style={styles.emojiWrapper}
+        onPress={() => onEmoji(item.emoji)}
+        style={styles.emojiButton}
       >
         <Text style={styles.emojiStyle}>{item.emoji}</Text>
       </PressableOpacity>
     );
-  });
+  }, []);
 
-  const EmojiList = ({ item, index, sendEmoji }) => {
+  const renderItem = useCallback(({ item, index }) => {
     return (
-      <View
-        style={{
-          height: EMOJI_SIZE_PER_BLOCK[index].height,
-          width: Dimensions.get("screen").width,
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 15,
-            color: "dimgrey",
-            fontWeight: "600",
-            marginHorizontal: 10,
-            marginBottom: 10,
-            marginTop: 20,
-          }}
-        >
+      <View>
+        <Text style={[styles.heading, index !== 0 && { paddingTop: 15 }]}>
           {CategoryTranslation[item.title]}
         </Text>
-        <FlashList
+        <FlatList
           scrollEnabled={false}
-          numColumns={BLOCK_COUNT}
           data={item.data}
-          estimatedItemSize={EMOJI_SIZE_PER_BLOCK[index].total}
-          keyExtractor={(_, i) => `${i}${index}`}
-          renderItem={(props) => <EmojiItem {...props} sendEmoji={sendEmoji} />}
+          numColumns={9}
+          renderItem={renderItemEmoji}
+          keyExtractor={keyExtractorEmoji}
+          initialNumToRender={1}
+          maxToRenderPerBatch={10}
         />
       </View>
     );
-  };
+  }, []);
 
   return (
-    <View>
-      <View
-        style={{
-          height: keyboardHeight,
-          width: Dimensions.get("screen").width,
-        }}
-      >
-        <FlashList
-          data={EMOJI_DATA}
-          keyExtractor={(_, i) => i.toString()}
-          estimatedItemSize={9}
-          renderItem={(props) => <EmojiList {...props} sendEmoji={onEmoji} />}
-        />
-      </View>
-    </View>
+    <ScrollView>
+      <VirtualizedList
+        scrollEnabled={false}
+        data={EMOJI_DATA}
+        renderItem={renderItem}
+        showsVerticalScrollIndicator={false}
+        keyExtractor={keyExtractor}
+        getItem={getItem}
+        getItemCount={getItemCount}
+        initialNumToRender={1}
+        maxToRenderPerBatch={1}
+        removeClippedSubviews={true}
+        windowSize={10}
+      />
+    </ScrollView>
   );
-});
+};
 
 const styles = StyleSheet.create({
-  emojiWrapper: {
+  heading: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "dimgrey",
+    paddingBottom: 10,
+    paddingHorizontal: 10,
+  },
+  emojiButton: {
     width: EMOJI_WIDTH,
-    aspectRatio: 1,
+    height: EMOJI_WIDTH,
     justifyContent: "center",
     alignItems: "center",
   },
