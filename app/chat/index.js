@@ -13,20 +13,14 @@ import ChatDATA from "../../mock/chatData";
 import Animated, {
   runOnJS,
   useAnimatedStyle,
-  useDerivedValue,
   useSharedValue,
-  withSpring,
   withTiming,
 } from "react-native-reanimated";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import { useKeyboard } from "../../hooks/useKeyboard";
 import EmojiKeyboard from "./emojiKeyboard";
 import CustomTextInput from "./customTextInput";
-import {
-  Gesture,
-  GestureDetector,
-  ScrollView,
-} from "react-native-gesture-handler";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { StatusBar } from "expo-status-bar";
 
@@ -196,32 +190,20 @@ const ChatScreen = () => {
       <GestureDetector gesture={swipeGesture}>
         <Animated.View
           style={[
-            {
-              width: "100%",
-              backgroundColor: "red",
-              overflow: "hidden",
-            },
+            styles.swipeableView,
             state.emojiView ? animatedWrapperTwo : animatedWrapper,
           ]}
         >
-          <ScrollView style={{ margin: 10, backgroundColor: "white" }}>
-            {new Array(100).fill("a").map((item, index) => (
-              <Text key={index.toString()}>Hello world!</Text>
-            ))}
-          </ScrollView>
-          {/* <ScrollView style={{ backgroundColor: "red" }}>
-            {new Array(100).fill("a").map((item) => (
-              <Text>Hello world!</Text>
-            ))}
-          </ScrollView> */}
-          {/* {state.emojiView && (
-          <EmojiKeyboard
-            keyboardHeight={-emojiViewHeight.value}
-            onEmoji={(e) =>
-              setState((prev) => ({ ...prev, text: prev.text + e }))
-            }
-          />
-        )} */}
+          <View style={styles.sheetHandle}>
+            <View style={styles.handle} />
+          </View>
+          {state.emojiView && (
+            <EmojiKeyboard
+              onEmoji={(e) =>
+                setState((prev) => ({ ...prev, text: prev.text + e }))
+              }
+            />
+          )}
         </Animated.View>
       </GestureDetector>
     </SafeAreaView>
@@ -270,6 +252,34 @@ const styles = StyleSheet.create({
   },
   msgStyle: {
     fontSize: 17,
+  },
+  swipeableView: {
+    width: "100%",
+    backgroundColor: "white",
+    overflow: "hidden",
+  },
+  buttonOverFlow: {
+    borderRadius: 100,
+    overflow: "hidden",
+    width: 38,
+    height: 38,
+  },
+  buttonStyle: {
+    justifyContent: "center",
+    alignItems: "center",
+    flex: 1,
+  },
+  sheetHandle: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  handle: {
+    width: 40,
+    height: 5,
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+    borderRadius: 10,
+    marginTop: 10,
+    marginBottom: 12,
   },
 });
 
