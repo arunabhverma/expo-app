@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   View,
   Text,
@@ -11,10 +17,12 @@ import {
 } from "react-native";
 import ChatDATA from "../../mock/chatData";
 import Animated, {
+  Easing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  ReduceMotion,
 } from "react-native-reanimated";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import { useKeyboard } from "../../hooks/useKeyboard";
@@ -23,11 +31,19 @@ import CustomTextInput from "./customTextInput";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { StatusBar } from "expo-status-bar";
+import { Ionicons } from "@expo/vector-icons";
+import PressableOpacity from "../../components/PressableOpacity";
 
 const AnimatedVirtualizedList =
   Animated.createAnimatedComponent(VirtualizedList);
 
 const HEIGHT = Dimensions.get("window").height;
+
+const config = {
+  duration: 300,
+  // easing: Easing.cubic,
+  easing: Easing.out(Easing.exp),
+};
 
 const ChatScreen = () => {
   const listRef = useRef(null);
@@ -54,9 +70,22 @@ const ChatScreen = () => {
     }
   }, [isKeyboardOpen.open]);
 
+  const onBackspace = useCallback(
+    () =>
+      setState((prev) => ({
+        ...prev,
+        text: Array.from(prev.text).slice(0, -1).join(""),
+      })),
+    []
+  );
+
   const getItem = (_data, index) => _data[index];
 
   const getItemCount = (_data) => _data?.length;
+
+  const onEmojiPress = (e) => {
+    setState((prev) => ({ ...prev, text: prev.text + e }));
+  };
 
   const sendMsg = () => {
     setState((prev) => ({
@@ -79,16 +108,16 @@ const ChatScreen = () => {
     })
     .onEnd((event) => {
       if (event.absoluteY < HALF_EXPANDABLE_HEIGHT) {
-        emojiViewHeight.value = withTiming(-EXPANDABLE_HEIGHT);
+        emojiViewHeight.value = withTiming(-EXPANDABLE_HEIGHT, config);
       } else if (event.absoluteY < HEIGHT - state.keyboardHeight) {
-        emojiViewHeight.value = withTiming(-state.keyboardHeight);
+        emojiViewHeight.value = withTiming(-state.keyboardHeight, config);
       } else if (
         event.absoluteY <
         HEIGHT - (EXPANDABLE_HEIGHT - state.keyboardHeight) / 3
       ) {
-        emojiViewHeight.value = withTiming(-state.keyboardHeight);
+        emojiViewHeight.value = withTiming(-state.keyboardHeight, config);
       } else {
-        emojiViewHeight.value = withTiming(0, undefined, () =>
+        emojiViewHeight.value = withTiming(0, config, () =>
           runOnJS(setState)({ ...state, emojiView: false })
         );
       }
@@ -116,16 +145,16 @@ const ChatScreen = () => {
       emojiViewHeight.value = height.value;
     } else {
       setState((prev) => ({ ...prev, emojiView: true }));
-      emojiViewHeight.value = withTiming(-state.keyboardHeight);
+      emojiViewHeight.value = withTiming(-state.keyboardHeight, config);
     }
   };
 
   const openKeyboard = () => {
-    emojiViewHeight.value = withTiming(-state.keyboardHeight);
+    emojiViewHeight.value = withTiming(-state.keyboardHeight, config);
     inputRef.current.focus();
     setTimeout(() => {
       setState((prev) => ({ ...prev, emojiView: false }));
-      emojiViewHeight.value = withTiming(0);
+      emojiViewHeight.value = withTiming(0, config);
     }, 300);
   };
 
@@ -197,13 +226,30 @@ const ChatScreen = () => {
           <View style={styles.sheetHandle}>
             <View style={styles.handle} />
           </View>
-          {state.emojiView && (
-            <EmojiKeyboard
-              onEmoji={(e) =>
-                setState((prev) => ({ ...prev, text: prev.text + e }))
-              }
-            />
-          )}
+          <View
+            style={{
+              // backgroundColor: "red",
+              justifyContent: "center",
+              alignItems: "flex-end",
+              marginHorizontal: 10,
+            }}
+          >
+            <PressableOpacity
+              borderless={true}
+              foreground={true}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+              onPress={onBackspace}
+            >
+              <Ionicons name="backspace" size={24} color="rgba(0, 0, 0, 0.5)" />
+            </PressableOpacity>
+          </View>
+          {state.emojiView && <EmojiKeyboard onEmoji={onEmojiPress} />}
         </Animated.View>
       </GestureDetector>
     </SafeAreaView>
