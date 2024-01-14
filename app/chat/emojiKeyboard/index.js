@@ -1,24 +1,20 @@
-import React, { useCallback, useLayoutEffect } from "react";
-import {
-  Dimensions,
-  StyleSheet,
-  Text,
-  View,
-  VirtualizedList,
-} from "react-native";
+import React, { useCallback, useLayoutEffect, useState } from "react";
+import { Dimensions, StyleSheet, Text } from "react-native";
+import _ from "lodash";
 import { FlatList, ScrollView } from "react-native-gesture-handler";
-import { EMOJI_DATA, CategoryTranslation } from "../../../mock/emojiData";
+import { EMOJI_DATA } from "../../../mock/emojiData";
 import PressableOpacity from "../../../components/PressableOpacity";
 
 const BLOCK_COUNT = 9;
 const EMOJI_WIDTH = Dimensions.get("window").width / BLOCK_COUNT;
 
-const EmojiKeyboard = ({ onEmoji }) => {
-  const getItem = useCallback((_data, index) => _data[index], []);
-  const getItemCount = useCallback((_data) => _data?.length, []);
-
-  const keyExtractor = useCallback((item) => item.title, []);
+const EmojiKeyboard = React.memo(({ onEmoji }) => {
   const keyExtractorEmoji = useCallback((item) => item.name, []);
+
+  const [state, setState] = useState({
+    index: 0,
+    data: EMOJI_DATA[0]?.data,
+  });
 
   const renderItemEmoji = useCallback(({ item }) => {
     return (
@@ -31,43 +27,23 @@ const EmojiKeyboard = ({ onEmoji }) => {
     );
   }, []);
 
-  const renderItem = useCallback(({ item, index }) => {
-    return (
-      <View>
-        <Text style={[styles.heading, index !== 0 && { paddingTop: 15 }]}>
-          {CategoryTranslation[item.title]}
-        </Text>
-        <FlatList
-          scrollEnabled={false}
-          data={item.data}
-          numColumns={9}
-          renderItem={renderItemEmoji}
-          keyExtractor={keyExtractorEmoji}
-          initialNumToRender={1}
-          maxToRenderPerBatch={10}
-        />
-      </View>
-    );
-  }, []);
-
   return (
-    <ScrollView>
-      <VirtualizedList
+    <ScrollView showsVerticalScrollIndicator={false}>
+      <FlatList
         scrollEnabled={false}
-        data={EMOJI_DATA}
-        renderItem={renderItem}
-        showsVerticalScrollIndicator={false}
-        keyExtractor={keyExtractor}
-        getItem={getItem}
-        getItemCount={getItemCount}
+        data={state.data}
+        extraData={state.index}
+        numColumns={9}
+        renderItem={renderItemEmoji}
+        keyExtractor={keyExtractorEmoji}
         initialNumToRender={1}
-        maxToRenderPerBatch={1}
+        maxToRenderPerBatch={2}
         removeClippedSubviews={true}
         windowSize={10}
       />
     </ScrollView>
   );
-};
+});
 
 const styles = StyleSheet.create({
   heading: {
