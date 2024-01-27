@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -22,7 +16,6 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-  ReduceMotion,
 } from "react-native-reanimated";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import { useKeyboard } from "../../hooks/useKeyboard";
@@ -33,6 +26,7 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import PressableOpacity from "../../components/PressableOpacity";
+import RenderMedia from "../../components/RenderMedia";
 
 const AnimatedVirtualizedList =
   Animated.createAnimatedComponent(VirtualizedList);
@@ -41,7 +35,6 @@ const HEIGHT = Dimensions.get("window").height;
 
 const config = {
   duration: 300,
-  // easing: Easing.cubic,
   easing: Easing.out(Easing.exp),
 };
 
@@ -59,6 +52,7 @@ const ChatScreen = () => {
   const [state, setState] = useState({
     text: "",
     data: ChatDATA,
+    imageData: [],
     emojiView: false,
     keyboardHeight: 0,
   });
@@ -87,10 +81,10 @@ const ChatScreen = () => {
     setState((prev) => ({ ...prev, text: prev.text + e }));
   };
 
-  const sendMsg = () => {
+  const sendMsg = (data = []) => {
     setState((prev) => ({
       ...prev,
-      data: [{ msg: prev.text, uId: 1 }, ...prev.data],
+      data: [{ msg: prev.text, media: data, uId: 1 }, ...prev.data],
       text: "",
     }));
 
@@ -168,7 +162,10 @@ const ChatScreen = () => {
             isUser ? styles.userBubble : styles.otherBubble,
           ]}
         >
-          <Text style={styles.msgStyle}>{item.msg}</Text>
+          {item.media && <RenderMedia data={item.media} />}
+          {item.msg?.length > 0 && (
+            <Text style={styles.msgStyle}>{item.msg}</Text>
+          )}
         </View>
       </View>
     );
@@ -211,6 +208,7 @@ const ChatScreen = () => {
         onFocus={openKeyboard}
         value={state.text}
         onChangeText={(e) => setState((prev) => ({ ...prev, text: e }))}
+        placeholder={"Message"}
         isEmoji={state.emojiView}
         onSend={sendMsg}
         onEmoji={openEmoji}
@@ -226,24 +224,11 @@ const ChatScreen = () => {
           <View style={styles.sheetHandle}>
             <View style={styles.handle} />
           </View>
-          <View
-            style={{
-              // backgroundColor: "red",
-              justifyContent: "center",
-              alignItems: "flex-end",
-              marginHorizontal: 10,
-            }}
-          >
+          <View style={styles.sheetContainer}>
             <PressableOpacity
               borderless={true}
               foreground={true}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
+              style={styles.backSpaceButton}
               onPress={onBackspace}
             >
               <Ionicons name="backspace" size={24} color="rgba(0, 0, 0, 0.5)" />
@@ -266,9 +251,6 @@ const styles = StyleSheet.create({
   msgBubble: {
     maxWidth: Dimensions.get("window").width * 0.8,
     borderRadius: 15,
-    paddingVertical: 5,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
 
     shadowColor: "#000",
     shadowOffset: {
@@ -298,6 +280,8 @@ const styles = StyleSheet.create({
   },
   msgStyle: {
     fontSize: 17,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
   swipeableView: {
     width: "100%",
@@ -326,6 +310,18 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginTop: 10,
     marginBottom: 12,
+  },
+  sheetContainer: {
+    justifyContent: "center",
+    alignItems: "flex-end",
+    marginHorizontal: 10,
+  },
+  backSpaceButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 
