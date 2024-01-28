@@ -1,12 +1,14 @@
 import React, { useRef, useState } from "react";
-import { View, StyleSheet, Alert } from "react-native";
+import { View, StyleSheet, Alert, Platform } from "react-native";
 import { Entypo, Feather, MaterialIcons } from "@expo/vector-icons";
 import PressableOpacity from "../../../components/PressableOpacity";
 import PasteInput from "@mattermost/react-native-paste-input";
 import DataStrap from "../../../components/DataStrap";
-import EnhancedImageViewing from "react-native-image-viewing/dist/ImageViewing";
+import { useNavigation } from "expo-router";
+import { router } from "expo-router";
 
 const CustomTextInput = React.forwardRef((props, ref) => {
+  const navigation = useNavigation();
   const imageScroll = useRef(null);
   const [state, setState] = useState({
     imageData: [],
@@ -47,9 +49,20 @@ const CustomTextInput = React.forwardRef((props, ref) => {
         ref={imageScroll}
         isVisible={state.imageData.length > 0}
         imageData={state.imageData}
-        onOpenImage={(id) =>
-          setState((prev) => ({ ...prev, openImageIndex: id, isOpen: true }))
-        }
+        onOpenImage={(id) => {
+          setState((prev) => ({ ...prev, openImageIndex: id, isOpen: true }));
+          router.push({
+            pathname: "photoView",
+            params: {
+              index: id,
+              images: state.imageData.map((item) => item.uri),
+            },
+          });
+          // navigation.navigate("photoView", {
+          //   index: id,
+          //   images: state.imageData,
+          // });
+        }}
         onDelete={onDeleteImage}
       />
       <View style={styles.mainContainer}>
@@ -75,7 +88,6 @@ const CustomTextInput = React.forwardRef((props, ref) => {
           )}
           <PasteInput
             ref={ref}
-            scr
             value={props.value}
             multiline
             onFocus={props.onFocus}
@@ -94,16 +106,6 @@ const CustomTextInput = React.forwardRef((props, ref) => {
           </PressableOpacity>
         </View>
       </View>
-      <EnhancedImageViewing
-        images={state.imageData.map((item) => {
-          return { uri: item.uri };
-        })}
-        imageIndex={state.openImageIndex}
-        visible={state.isOpen}
-        onRequestClose={() =>
-          setState((prev) => ({ ...prev, isOpen: false, openImageIndex: null }))
-        }
-      />
     </>
   );
 });
@@ -138,7 +140,7 @@ const styles = StyleSheet.create({
   inputStyle: {
     flex: 1,
     marginLeft: 3,
-    padding: 0,
+    padding: Platform.OS === "ios" ? 7 : 0,
     fontSize: 20,
     maxHeight: 135,
   },

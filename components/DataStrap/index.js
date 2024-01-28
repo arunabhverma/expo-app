@@ -42,7 +42,7 @@ const DataStrap = React.forwardRef((props, ref) => {
             </AnimatedPressable>
             <PressableOpacity
               onPress={() => onOpenImage(index)}
-              style={{ zIndex: -100 }}
+              style={{ zIndex: -100, overflow: "hidden", borderRadius: 10 }}
             >
               <Image source={{ uri: item.uri }} style={styles.image} />
             </PressableOpacity>

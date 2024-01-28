@@ -12,6 +12,8 @@ import {
 import ChatDATA from "../../mock/chatData";
 import Animated, {
   Easing,
+  Extrapolate,
+  interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -27,6 +29,8 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import PressableOpacity from "../../components/PressableOpacity";
 import RenderMedia from "../../components/RenderMedia";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
 
 const AnimatedVirtualizedList =
   Animated.createAnimatedComponent(VirtualizedList);
@@ -41,6 +45,7 @@ const config = {
 const ChatScreen = () => {
   const listRef = useRef(null);
   const inputRef = useRef(null);
+  const { bottom } = useSafeAreaInsets();
   const emojiViewHeight = useSharedValue(0);
   const isKeyboardOpen = useKeyboard();
   const headerHeight = useHeaderHeight();
@@ -54,7 +59,7 @@ const ChatScreen = () => {
     data: ChatDATA,
     imageData: [],
     emojiView: false,
-    keyboardHeight: 0,
+    keyboardHeight: Platform.OS === "ios" ? 346 : 312,
   });
 
   useEffect(() => {
@@ -120,15 +125,29 @@ const ChatScreen = () => {
 
   const animatedWrapper = useAnimatedStyle(() => {
     let keyboardHeight = height.value;
+    let newVal = interpolate(
+      keyboardHeight,
+      [-state.keyboardHeight, 0],
+      [0, bottom],
+      Extrapolate.CLAMP
+    );
     return {
       height: -keyboardHeight,
+      marginTop: newVal,
     };
-  }, []);
+  }, [bottom, state.keyboardHeight]);
 
   const animatedWrapperTwo = useAnimatedStyle(() => {
     let keyboardHeight = emojiViewHeight.value;
+    let newVal = interpolate(
+      keyboardHeight,
+      [-state.keyboardHeight, 0],
+      [0, bottom],
+      Extrapolate.CLAMP
+    );
     return {
       height: -keyboardHeight,
+      marginTop: newVal,
     };
   }, [state.emojiView, emojiViewHeight.value]);
 
@@ -162,7 +181,20 @@ const ChatScreen = () => {
             isUser ? styles.userBubble : styles.otherBubble,
           ]}
         >
-          {item.media && <RenderMedia data={item.media} />}
+          {item.media && (
+            <RenderMedia
+              data={item.media}
+              onPressImage={(id) =>
+                router.push({
+                  pathname: "photoView",
+                  params: {
+                    index: id,
+                    images: item.media.map((val) => val.uri),
+                  },
+                })
+              }
+            />
+          )}
           {item.msg?.length > 0 && (
             <Text style={styles.msgStyle}>{item.msg}</Text>
           )}
@@ -172,7 +204,7 @@ const ChatScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[{ flex: 1 }]}>
+    <View style={[{ flex: 1 }]}>
       <StatusBar style="dark" />
       <AnimatedVirtualizedList
         ref={listRef}
@@ -198,8 +230,11 @@ const ChatScreen = () => {
         getItem={getItem}
         maxToRenderPerBatch={5}
         windowSize={16}
-        contentContainerStyle={[styles.flatListStyle]}
-        style={{ flex: 1, transform: [{ scale: -1 }] }}
+        contentContainerStyle={styles.flatListStyle}
+        style={[
+          { flex: 1 },
+          Platform.OS === "android" && { transform: [{ scale: -1 }] },
+        ]}
         renderItem={renderItem}
         keyExtractor={(_, i) => i.toString()}
       />
@@ -237,7 +272,7 @@ const ChatScreen = () => {
           {state.emojiView && <EmojiKeyboard onEmoji={onEmojiPress} />}
         </Animated.View>
       </GestureDetector>
-    </SafeAreaView>
+    </View>
   );
 };
 
