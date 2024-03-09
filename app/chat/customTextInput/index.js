@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, StyleSheet, Alert, Platform } from "react-native";
 import { Entypo, Feather, MaterialIcons } from "@expo/vector-icons";
 import PressableOpacity from "../../../components/PressableOpacity";
@@ -15,6 +15,11 @@ const CustomTextInput = React.forwardRef((props, ref) => {
     isOpen: false,
     openImageIndex: null,
   });
+
+  useEffect(() => {
+    console.log("dropImagesFromOutside", props.dropImagesFromOutside);
+    onPasteImage(false, props.dropImagesFromOutside);
+  }, [props.dropImagesFromOutside]);
 
   const onPasteImage = (error, data) => {
     if (error) {
@@ -43,6 +48,8 @@ const CustomTextInput = React.forwardRef((props, ref) => {
     props.onSend(state.imageData);
   };
 
+  console.log("tstate", state.imageData);
+
   return (
     <>
       <DataStrap
@@ -58,10 +65,6 @@ const CustomTextInput = React.forwardRef((props, ref) => {
               images: state.imageData.map((item) => item.uri),
             },
           });
-          // navigation.navigate("photoView", {
-          //   index: id,
-          //   images: state.imageData,
-          // });
         }}
         onDelete={onDeleteImage}
       />

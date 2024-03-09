@@ -3,11 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   Platform,
   VirtualizedList,
   Keyboard,
   Dimensions,
+  Image,
 } from "react-native";
 import ChatDATA from "../../mock/chatData";
 import Animated, {
@@ -20,6 +20,11 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
+import {
+  DragDropContentView,
+  DragDropContentViewProps,
+  OnDropEvent,
+} from "expo-drag-drop-content-view";
 import { useKeyboard } from "../../hooks/useKeyboard";
 import EmojiKeyboard from "./emojiKeyboard";
 import CustomTextInput from "./customTextInput";
@@ -204,8 +209,26 @@ const ChatScreen = () => {
   };
 
   return (
-    <View style={[{ flex: 1 }]}>
+    <View style={{ flex: 1 }}>
       <StatusBar style="dark" />
+      <View
+        pointerEvents="none"
+        style={{
+          ...StyleSheet.absoluteFill,
+          zIndex: 1,
+        }}
+      >
+        <DragDropContentView
+          highlightColor="rgba(255,255,255,1)"
+          highlightBorderRadius={0}
+          onDropEvent={({ assets }) => {
+            setState((prev) => ({ ...prev, imageData: assets }));
+          }}
+          style={{
+            flex: 1,
+          }}
+        />
+      </View>
       <AnimatedVirtualizedList
         ref={listRef}
         inverted
@@ -242,6 +265,7 @@ const ChatScreen = () => {
         ref={inputRef}
         onFocus={openKeyboard}
         value={state.text}
+        dropImagesFromOutside={state.imageData}
         onChangeText={(e) => setState((prev) => ({ ...prev, text: e }))}
         placeholder={"Message"}
         isEmoji={state.emojiView}
