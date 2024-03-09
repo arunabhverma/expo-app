@@ -27,7 +27,7 @@ const index = () => {
       <View
         style={{
           marginTop: top,
-          backgroundColor: "red",
+          backgroundColor: "black",
           position: "absolute",
           zIndex: 1,
         }}
