@@ -7,7 +7,6 @@ import {
   VirtualizedList,
   Keyboard,
   Dimensions,
-  Image,
 } from "react-native";
 import ChatDATA from "../../mock/chatData";
 import Animated, {
@@ -15,16 +14,13 @@ import Animated, {
   Extrapolate,
   interpolate,
   runOnJS,
+  useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
-import {
-  DragDropContentView,
-  DragDropContentViewProps,
-  OnDropEvent,
-} from "expo-drag-drop-content-view";
+import { DragDropContentView } from "expo-drag-drop-content-view";
 import { useKeyboard } from "../../hooks/useKeyboard";
 import EmojiKeyboard from "./emojiKeyboard";
 import CustomTextInput from "./customTextInput";

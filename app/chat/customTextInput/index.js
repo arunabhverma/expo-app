@@ -17,7 +17,6 @@ const CustomTextInput = React.forwardRef((props, ref) => {
   });
 
   useEffect(() => {
-    console.log("dropImagesFromOutside", props.dropImagesFromOutside);
     onPasteImage(false, props.dropImagesFromOutside);
   }, [props.dropImagesFromOutside]);
 
@@ -47,8 +46,6 @@ const CustomTextInput = React.forwardRef((props, ref) => {
     setState((prev) => ({ ...prev, imageData: [] }));
     props.onSend(state.imageData);
   };
-
-  console.log("tstate", state.imageData);
 
   return (
     <>

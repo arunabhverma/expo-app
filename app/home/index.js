@@ -19,7 +19,6 @@ const Home = () => {
 
   useEffect(() => {
     CameraRoll.getAlbums({}).then((res) => {
-      console.log("res", res);
       setState((prev) => ({ ...prev, albums: res }));
     });
 
