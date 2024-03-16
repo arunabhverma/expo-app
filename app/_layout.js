@@ -4,22 +4,34 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Stack } from "expo-router/stack";
 import { Platform } from "react-native";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { PersistGate } from "redux-persist/integration/react";
+import { persistStore } from "redux-persist";
+import { Provider } from "react-redux";
+import store from "../store";
+
+const persistor = persistStore(store);
 
 export default function Layout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <KeyboardProvider>
-        <BottomSheetModalProvider>
-          <SafeAreaProvider>
-            <Stack
-              screenOptions={{
-                animation:
-                  Platform.OS === "android" ? "fade_from_bottom" : "default",
-              }}
-            />
-          </SafeAreaProvider>
-        </BottomSheetModalProvider>
-      </KeyboardProvider>
-    </GestureHandlerRootView>
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <KeyboardProvider>
+            <BottomSheetModalProvider>
+              <SafeAreaProvider>
+                <Stack
+                  screenOptions={{
+                    animation:
+                      Platform.OS === "android"
+                        ? "fade_from_bottom"
+                        : "default",
+                  }}
+                />
+              </SafeAreaProvider>
+            </BottomSheetModalProvider>
+          </KeyboardProvider>
+        </GestureHandlerRootView>
+      </PersistGate>
+    </Provider>
   );
 }
