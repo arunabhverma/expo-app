@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, StyleSheet, Alert, Platform } from "react-native";
 import { Entypo, Feather, MaterialIcons } from "@expo/vector-icons";
-import PressableOpacity from "../../../components/PressableOpacity";
+import PressableOpacity from "../../../../components/PressableOpacity";
 import PasteInput from "@mattermost/react-native-paste-input";
-import DataStrap from "../../../components/DataStrap";
+import DataStrap from "../../../../components/DataStrap";
 import { useNavigation } from "expo-router";
 import { router } from "expo-router";
 

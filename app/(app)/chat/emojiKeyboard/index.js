@@ -2,8 +2,8 @@ import React, { useCallback, useLayoutEffect, useState } from "react";
 import { Dimensions, SafeAreaView, StyleSheet, Text } from "react-native";
 import _ from "lodash";
 import { FlatList, ScrollView } from "react-native-gesture-handler";
-import { EMOJI_DATA } from "../../../mock/emojiData";
-import PressableOpacity from "../../../components/PressableOpacity";
+import { EMOJI_DATA } from "../../../../mock/emojiData";
+import PressableOpacity from "../../../../components/PressableOpacity";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const BLOCK_COUNT = 9;

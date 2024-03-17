@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import firestore from "@react-native-firebase/firestore";
 import { useSelector } from "react-redux";
+import { router } from "expo-router";
 
 const Users = () => {
   const { user_id } = useSelector((state) => state.auth);
-  console.log("user_id", user_id);
   const [state, setState] = useState({
     usersList: [],
   });
@@ -27,7 +27,10 @@ const Users = () => {
   const renderItem = ({ item, index }) => {
     let user = item?._data;
     return (
-      <View style={styles.userCard}>
+      <Pressable
+        style={styles.userCard}
+        onPress={() => router.push({ pathname: "/chat", params: user })}
+      >
         <View style={styles.imageBox} />
         <View>
           <Text>
@@ -35,7 +38,7 @@ const Users = () => {
           </Text>
           <Text>{user?.email}</Text>
         </View>
-      </View>
+      </Pressable>
     );
   };
   return (
