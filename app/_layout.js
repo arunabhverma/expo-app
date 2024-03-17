@@ -19,14 +19,7 @@ export default function Layout() {
           <KeyboardProvider>
             <BottomSheetModalProvider>
               <SafeAreaProvider>
-                <Stack
-                  screenOptions={{
-                    animation:
-                      Platform.OS === "android"
-                        ? "fade_from_bottom"
-                        : "default",
-                  }}
-                />
+                <Stack />
               </SafeAreaProvider>
             </BottomSheetModalProvider>
           </KeyboardProvider>

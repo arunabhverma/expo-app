@@ -8,30 +8,35 @@ import {
   Keyboard,
   Dimensions,
 } from "react-native";
-import ChatDATA from "../../mock/chatData";
+import _ from "lodash";
 import Animated, {
   Easing,
   Extrapolate,
   interpolate,
   runOnJS,
-  useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import uuid from "react-native-uuid";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import { DragDropContentView } from "expo-drag-drop-content-view";
-import { useKeyboard } from "../../hooks/useKeyboard";
+import firestore from "@react-native-firebase/firestore";
+import { useKeyboard } from "../../../hooks/useKeyboard";
 import EmojiKeyboard from "./emojiKeyboard";
 import CustomTextInput from "./customTextInput";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import PressableOpacity from "../../components/PressableOpacity";
-import RenderMedia from "../../components/RenderMedia";
+import PressableOpacity from "../../../components/PressableOpacity";
+import RenderMedia from "../../../components/RenderMedia";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import { useSelector } from "react-redux";
+
+const chatCollection = firestore().collection("Chats");
+const roomCollection = firestore().collection("Rooms");
 
 const AnimatedVirtualizedList =
   Animated.createAnimatedComponent(VirtualizedList);
@@ -44,6 +49,10 @@ const config = {
 };
 
 const ChatScreen = () => {
+  const { user, user_id, keyboardHeight } = useSelector((state) => state.auth);
+  const recipient = useLocalSearchParams();
+  const recipient_id = recipient?.user_id;
+
   const listRef = useRef(null);
   const inputRef = useRef(null);
   const { bottom } = useSafeAreaInsets();
@@ -57,11 +66,113 @@ const ChatScreen = () => {
 
   const [state, setState] = useState({
     text: "",
-    data: ChatDATA,
+    data: [],
     imageData: [],
     emojiView: false,
     keyboardHeight: Platform.OS === "ios" ? 346 : 312,
+    room: {},
   });
+
+  useEffect(() => {
+    const subscriber = chatCollection.onSnapshot((querySnapshot) => {
+      querySnapshot.forEach((documentSnapshot) => {
+        let lastData = documentSnapshot.data()?.data?.pop();
+        if (lastData?.user_id !== user_id) {
+          setState((prev) => ({
+            ...prev,
+            data: [lastData, ...prev.data],
+          }));
+        }
+      });
+    });
+
+    // Unsubscribe from events when no longer in use
+    return () => subscriber();
+  }, []);
+
+  useEffect(() => {
+    getRoomId();
+  }, []);
+
+  useEffect(() => {
+    if (state.room?.room_id) {
+      getRoomChats(state.room?.room_id);
+    }
+  }, [state.room]);
+
+  const getRoomId = () => {
+    if (recipient_id && user_id) {
+      let IDs = [recipient_id, user_id];
+      roomCollection
+        .where("user_ids", "array-contains-any", IDs)
+        .get()
+        .then((res) => {
+          const matchingRooms = res.docs.find((doc) => {
+            const docUserIDs = doc.data().user_ids;
+            return IDs.every((id) => docUserIDs.includes(id));
+          });
+          if (
+            matchingRooms !== undefined &&
+            Object.keys(matchingRooms)?.length > 0
+          ) {
+            setState((prev) => ({ ...prev, room: matchingRooms.data() }));
+          } else {
+            let uid = uuid.v4();
+            roomCollection
+              ?.add({
+                room_id: uid,
+                user_ids: [recipient_id, user_id],
+                users: [user, recipient],
+              })
+              .then(() => {
+                setState((prev) => ({
+                  ...prev,
+                  room: {
+                    room_id: uid,
+                    user_ids: [recipient_id, user_id],
+                    users: [user, recipient],
+                  },
+                }));
+              });
+          }
+        })
+        .catch((e) => console.log("e", e));
+    }
+  };
+
+  const getRoomChats = () => {
+    chatCollection
+      ?.doc(state?.room?.room_id)
+      .get()
+      .then((res) => {
+        let chatData = _.orderBy(res?.data()?.data || [], "createdAt", "desc");
+        setState((prev) => ({ ...prev, data: chatData }));
+      })
+      .catch((e) => console.log("e", e));
+  };
+
+  const [lastDocument, setLastDocument] = useState();
+  const [userData, setUserData] = useState([]);
+
+  const onEndReached = () => {
+    // console.log("LOAD");
+    // let query = chatCollection.doc(state?.room?.room_id)
+    // // if(state?.data)
+    // // console.log(qu);
+    // // if (lastDocument !== undefined) {
+    // //   query = query.startAfter(lastDocument); // fetch data following the last document accessed
+    // // }
+    // query
+    //   .limit(3) // limit to your page size, 3 is just an example
+    //   .get()
+    //   .then((querySnapshot) => {
+    //     setLastDocument(querySnapshot.docs[querySnapshot.docs.length - 1]);
+    //     // MakeUserData(querySnapshot.docs);
+    //   });
+  };
+  // if(state.data?.length > 0){
+
+  // }
 
   useEffect(() => {
     if (isKeyboardOpen.open) {
@@ -88,9 +199,19 @@ const ChatScreen = () => {
   };
 
   const sendMsg = (data = []) => {
+    chatCollection?.doc(state.room?.room_id)?.set(
+      {
+        data: firestore.FieldValue.arrayUnion({
+          user_id: user_id,
+          msg: state.text,
+          createdAt: firestore.Timestamp.now(),
+        }),
+      },
+      { merge: true }
+    );
     setState((prev) => ({
       ...prev,
-      data: [{ msg: prev.text, media: data, uId: 1 }, ...prev.data],
+      data: [{ msg: prev.text, user_id }, ...prev.data],
       text: "",
     }));
 
@@ -109,13 +230,13 @@ const ChatScreen = () => {
     .onEnd((event) => {
       if (event.absoluteY < HALF_EXPANDABLE_HEIGHT) {
         emojiViewHeight.value = withTiming(-EXPANDABLE_HEIGHT, config);
-      } else if (event.absoluteY < HEIGHT - state.keyboardHeight) {
-        emojiViewHeight.value = withTiming(-state.keyboardHeight, config);
+      } else if (event.absoluteY < HEIGHT - keyboardHeight) {
+        emojiViewHeight.value = withTiming(-keyboardHeight, config);
       } else if (
         event.absoluteY <
-        HEIGHT - (EXPANDABLE_HEIGHT - state.keyboardHeight) / 3
+        HEIGHT - (EXPANDABLE_HEIGHT - keyboardHeight) / 3
       ) {
-        emojiViewHeight.value = withTiming(-state.keyboardHeight, config);
+        emojiViewHeight.value = withTiming(-keyboardHeight, config);
       } else {
         emojiViewHeight.value = withTiming(0, config, () =>
           runOnJS(setState)({ ...state, emojiView: false })
@@ -128,7 +249,7 @@ const ChatScreen = () => {
     let keyboardHeight = height.value;
     let newVal = interpolate(
       keyboardHeight,
-      [-state.keyboardHeight, 0],
+      [-keyboardHeight, 0],
       [0, bottom],
       Extrapolate.CLAMP
     );
@@ -136,13 +257,13 @@ const ChatScreen = () => {
       height: -keyboardHeight,
       marginTop: newVal,
     };
-  }, [bottom, state.keyboardHeight]);
+  }, [bottom, keyboardHeight]);
 
   const animatedWrapperTwo = useAnimatedStyle(() => {
     let keyboardHeight = emojiViewHeight.value;
     let newVal = interpolate(
       keyboardHeight,
-      [-state.keyboardHeight, 0],
+      [-keyboardHeight, 0],
       [0, bottom],
       Extrapolate.CLAMP
     );
@@ -159,12 +280,12 @@ const ChatScreen = () => {
       emojiViewHeight.value = height.value;
     } else {
       setState((prev) => ({ ...prev, emojiView: true }));
-      emojiViewHeight.value = withTiming(-state.keyboardHeight, config);
+      emojiViewHeight.value = withTiming(-keyboardHeight, config);
     }
   };
 
   const openKeyboard = () => {
-    emojiViewHeight.value = withTiming(-state.keyboardHeight, config);
+    emojiViewHeight.value = withTiming(-keyboardHeight, config);
     inputRef.current.focus();
     setTimeout(() => {
       setState((prev) => ({ ...prev, emojiView: false }));
@@ -173,7 +294,7 @@ const ChatScreen = () => {
   };
 
   const renderItem = ({ item, index }) => {
-    let isUser = item.uId === 1;
+    let isUser = item.user_id === user_id;
     return (
       <View style={[styles.msgWrapper, isUser && styles.userMsgWrapper]}>
         <View
@@ -225,38 +346,31 @@ const ChatScreen = () => {
           }}
         />
       </View>
-      <AnimatedVirtualizedList
-        ref={listRef}
-        inverted
-        data={[
-          ...state.data,
-          ...state.data,
-          ...state.data,
-          ...state.data,
-          ...state.data,
-          ...state.data,
-          ...state.data,
-          ...state.data,
-          ...state.data,
-          ...state.data,
-          ...state.data,
-          ...state.data,
-        ]}
-        extraData={state.data}
-        removeClippedSubviews={Platform.OS === "android"}
-        initialNumToRender={10}
-        getItemCount={getItemCount}
-        getItem={getItem}
-        maxToRenderPerBatch={5}
-        windowSize={16}
-        contentContainerStyle={styles.flatListStyle}
-        style={[
-          { flex: 1 },
-          Platform.OS === "android" && { transform: [{ scale: -1 }] },
-        ]}
-        renderItem={renderItem}
-        keyExtractor={(_, i) => i.toString()}
-      />
+      {state.data?.length > 0 ? (
+        <AnimatedVirtualizedList
+          ref={listRef}
+          inverted
+          data={state.data || []}
+          extraData={state.data || []}
+          removeClippedSubviews={Platform.OS === "android"}
+          getItemCount={getItemCount}
+          getItem={getItem}
+          initialNumToRender={20}
+          maxToRenderPerBatch={20}
+          windowSize={16}
+          onEndReachedThreshold={0.5}
+          onEndReached={onEndReached}
+          contentContainerStyle={styles.flatListStyle}
+          style={[
+            { flex: 1 },
+            Platform.OS === "android" && { transform: [{ scale: -1 }] },
+          ]}
+          renderItem={renderItem}
+          keyExtractor={(_, i) => i.toString()}
+        />
+      ) : (
+        <View style={{ flex: 1 }} />
+      )}
       <CustomTextInput
         ref={inputRef}
         onFocus={openKeyboard}

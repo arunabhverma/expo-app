@@ -1,23 +1,31 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button, StyleSheet, Text, TextInput, View } from "react-native";
 import auth from "@react-native-firebase/auth";
 import { Link, router } from "expo-router";
-import { setUserId } from "../store/authReducer";
+import { setKeyboardHeight, setUserId } from "../store/authReducer";
 import { useDispatch } from "react-redux";
+import { useKeyboard } from "../hooks/useKeyboard";
 
 const App = () => {
   const dispatch = useDispatch();
+  const isKeyboardOpen = useKeyboard();
   const [state, setState] = useState({
     email: "",
     password: "",
   });
+
+  useEffect(() => {
+    if (isKeyboardOpen) {
+      dispatch(setKeyboardHeight(isKeyboardOpen?.endCoordinates?.height));
+    }
+  }, [isKeyboardOpen]);
 
   const login = () => {
     auth()
       .signInWithEmailAndPassword(state.email, state.password)
       .then((e) => {
         dispatch(setUserId(e.user.uid));
-        router.push("/users");
+        router.push("/");
       })
       .catch((error) => {
         console.error(error);
