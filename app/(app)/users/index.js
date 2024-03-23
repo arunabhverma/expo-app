@@ -1,15 +1,30 @@
 import React, { useEffect, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import firestore from "@react-native-firebase/firestore";
 import { useSelector } from "react-redux";
 import { router } from "expo-router";
+import Avatar from "../../../components/Avatar";
 
 const Users = () => {
   const { user_id } = useSelector((state) => state.auth);
   const [state, setState] = useState({
     usersList: [],
+    refreshing: false,
   });
+
   useEffect(() => {
+    getUsers();
+  }, []);
+
+  const onRefresh = React.useCallback(() => {
+    setState((prev) => ({ ...prev, refreshing: true }));
     getUsers();
   }, []);
 
@@ -19,7 +34,11 @@ const Users = () => {
       .where("user_id", "!=", user_id)
       .get()
       .then((res) => {
-        setState((prev) => ({ ...prev, usersList: res?._docs }));
+        setState((prev) => ({
+          ...prev,
+          usersList: res?._docs,
+          refreshing: false,
+        }));
       })
       .catch((e) => console.log("e"));
   };
@@ -31,7 +50,7 @@ const Users = () => {
         style={styles.userCard}
         onPress={() => router.push({ pathname: "/chat", params: user })}
       >
-        <View style={styles.imageBox} />
+        <Avatar firstName={user?.first_name} lastName={user?.last_name} />
         <View>
           <Text>
             {user?.first_name} {user?.last_name}
@@ -47,6 +66,9 @@ const Users = () => {
       contentContainerStyle={styles.flatListContainerStyle}
       keyExtractor={(_, i) => i.toString()}
       renderItem={renderItem}
+      refreshControl={
+        <RefreshControl refreshing={state.refreshing} onRefresh={onRefresh} />
+      }
     />
   );
 };
@@ -61,12 +83,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     gap: 10,
-  },
-  imageBox: {
-    width: 50,
-    aspectRatio: 1,
-    backgroundColor: "rgb(245, 245, 245)",
-    borderRadius: 50 / 2,
   },
 });
 

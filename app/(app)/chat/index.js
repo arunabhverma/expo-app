@@ -7,8 +7,10 @@ import {
   VirtualizedList,
   Keyboard,
   Dimensions,
+  Alert,
 } from "react-native";
 import _ from "lodash";
+import moment from "moment";
 import Animated, {
   Easing,
   Extrapolate,
@@ -22,6 +24,7 @@ import uuid from "react-native-uuid";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import { DragDropContentView } from "expo-drag-drop-content-view";
 import firestore from "@react-native-firebase/firestore";
+import storage from "@react-native-firebase/storage";
 import { useKeyboard } from "../../../hooks/useKeyboard";
 import EmojiKeyboard from "./emojiKeyboard";
 import CustomTextInput from "./customTextInput";
@@ -34,8 +37,9 @@ import RenderMedia from "../../../components/RenderMedia";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSelector } from "react-redux";
+import Avatar from "../../../components/Avatar";
 
-const chatCollection = firestore().collection("Chats");
+const chatCollection = (room_id) => firestore().collection(`Chats-${room_id}`);
 const roomCollection = firestore().collection("Rooms");
 
 const AnimatedVirtualizedList =
@@ -47,6 +51,19 @@ const config = {
   duration: 300,
   easing: Easing.out(Easing.exp),
 };
+
+function formatCreatedAt(createdAt) {
+  const now = moment();
+  const created = moment(createdAt);
+
+  if (now.diff(created, "days") < 2) {
+    // If created within last 2 days, show relative time
+    return created.fromNow();
+  } else {
+    // Otherwise, show the date
+    return created.format("D MMMM YYYY");
+  }
+}
 
 const ChatScreen = () => {
   const { user, user_id, keyboardHeight } = useSelector((state) => state.auth);
@@ -67,6 +84,7 @@ const ChatScreen = () => {
   const [state, setState] = useState({
     text: "",
     data: [],
+    isDataFetched: null,
     imageData: [],
     emojiView: false,
     keyboardHeight: Platform.OS === "ios" ? 346 : 312,
@@ -74,29 +92,32 @@ const ChatScreen = () => {
   });
 
   useEffect(() => {
-    const subscriber = chatCollection.onSnapshot((querySnapshot) => {
-      querySnapshot.forEach((documentSnapshot) => {
-        let lastData = documentSnapshot.data()?.data?.pop();
-        if (lastData?.user_id !== user_id) {
-          setState((prev) => ({
-            ...prev,
-            data: [lastData, ...prev.data],
-          }));
-        }
-      });
-    });
-
-    // Unsubscribe from events when no longer in use
-    return () => subscriber();
-  }, []);
-
-  useEffect(() => {
     getRoomId();
   }, []);
 
   useEffect(() => {
+    if (state.room?.room_id && user_id && state.isDataFetched) {
+      const subscriber = chatCollection(state?.room?.room_id)
+        .orderBy("createdAt", "desc")
+        .where("createdAt", ">", state.isDataFetched)
+        .onSnapshot((querySnapshot) => {
+          let data = querySnapshot.docs.shift();
+          if (
+            data?.data()?.user_id !== user_id &&
+            data?.data()?.user_id !== undefined
+          ) {
+            setState((prev) => ({ ...prev, data: [data, ...prev.data] }));
+          }
+        });
+
+      return () => subscriber();
+    }
+  }, [state.room, user_id, state.isDataFetched]);
+
+  useEffect(() => {
     if (state.room?.room_id) {
       getRoomChats(state.room?.room_id);
+      setOnline();
     }
   }, [state.room]);
 
@@ -141,38 +162,22 @@ const ChatScreen = () => {
   };
 
   const getRoomChats = () => {
-    chatCollection
-      ?.doc(state?.room?.room_id)
+    chatCollection(state?.room?.room_id)
+      .orderBy("createdAt", "desc")
       .get()
       .then((res) => {
-        let chatData = _.orderBy(res?.data()?.data || [], "createdAt", "desc");
-        setState((prev) => ({ ...prev, data: chatData }));
+        setState((prev) => ({
+          ...prev,
+          data: res?.docs,
+          isDataFetched: Date(),
+        }));
       })
       .catch((e) => console.log("e", e));
   };
 
-  const [lastDocument, setLastDocument] = useState();
-  const [userData, setUserData] = useState([]);
+  const setOnline = () => {};
 
-  const onEndReached = () => {
-    // console.log("LOAD");
-    // let query = chatCollection.doc(state?.room?.room_id)
-    // // if(state?.data)
-    // // console.log(qu);
-    // // if (lastDocument !== undefined) {
-    // //   query = query.startAfter(lastDocument); // fetch data following the last document accessed
-    // // }
-    // query
-    //   .limit(3) // limit to your page size, 3 is just an example
-    //   .get()
-    //   .then((querySnapshot) => {
-    //     setLastDocument(querySnapshot.docs[querySnapshot.docs.length - 1]);
-    //     // MakeUserData(querySnapshot.docs);
-    //   });
-  };
-  // if(state.data?.length > 0){
-
-  // }
+  const onEndReached = () => {};
 
   useEffect(() => {
     if (isKeyboardOpen.open) {
@@ -198,24 +203,73 @@ const ChatScreen = () => {
     setState((prev) => ({ ...prev, text: prev.text + e }));
   };
 
+  const uploadImage = (imageData) => {
+    if (imageData.length === 0) {
+      return Promise.resolve([]);
+    }
+
+    const imagePromises = [];
+
+    for (let i = 0; i < imageData.length; i++) {
+      let image = imageData[i];
+      const uploadUri =
+        Platform.OS === "ios" ? image.uri.replace("file://", "") : image.uri;
+      imagePromises.push(
+        new Promise((resolve, reject) => {
+          storage()
+            .ref(`images/${uuid.v4()}_${image?.fileName}`)
+            .putFile(uploadUri)
+            .then((snapshot) => {
+              resolve(snapshot);
+            })
+            .catch((error) => {
+              reject(error);
+            });
+        })
+      );
+    }
+
+    return Promise.all(imagePromises);
+  };
+
   const sendMsg = (data = []) => {
-    chatCollection?.doc(state.room?.room_id)?.set(
-      {
-        data: firestore.FieldValue.arrayUnion({
-          user_id: user_id,
-          msg: state.text,
-          createdAt: firestore.Timestamp.now(),
-        }),
-      },
-      { merge: true }
-    );
+    let localMediaArray = data?.length > 0 ? { media: data } : {};
     setState((prev) => ({
       ...prev,
-      data: [{ msg: prev.text, user_id }, ...prev.data],
+      data: [
+        { _data: { msg: prev.text, user_id, ...localMediaArray } },
+        ...prev.data,
+      ],
       text: "",
     }));
-
-    listRef.current.scrollToOffset({ offset: 0, animated: false });
+    uploadImage(data)
+      .then((res) => {
+        let mediaArray = res.map((item) => {
+          if (item.metadata !== undefined) {
+            return {
+              uri: `https://firebasestorage.googleapis.com/v0/b/${
+                item?.metadata?.bucket
+              }/o/${encodeURIComponent(item?.metadata?.fullPath)}?alt=media`,
+            };
+          } else {
+            return item;
+          }
+        });
+        let data = {
+          user_id: user_id,
+          msg: state.text,
+          createdAt: Date(),
+        };
+        if (mediaArray.length > 0) {
+          data.media = mediaArray;
+        }
+        chatCollection(state?.room?.room_id).add(data);
+      })
+      .catch((e) => {
+        Alert.alert("Error! try again");
+        console.log("e", e);
+      });
+    listRef?.current?.scrollToOffset?.({ offset: 0, animated: false });
   };
 
   const swipeGesture = Gesture.Pan()
@@ -293,33 +347,59 @@ const ChatScreen = () => {
     }, 300);
   };
 
-  const renderItem = ({ item, index }) => {
-    let isUser = item.user_id === user_id;
+  const renderItem = ({ item }) => {
+    let doc = item?._data;
+    let isUser = doc?.user_id === user_id;
     return (
       <View style={[styles.msgWrapper, isUser && styles.userMsgWrapper]}>
-        <View
-          style={[
-            styles.msgBubble,
-            isUser ? styles.userBubble : styles.otherBubble,
-          ]}
-        >
-          {item.media && (
-            <RenderMedia
-              data={item.media}
-              onPressImage={(id) =>
-                router.push({
-                  pathname: "photoView",
-                  params: {
-                    index: id,
-                    images: item.media.map((val) => val.uri),
-                  },
-                })
-              }
+        <View style={{ flexDirection: "row", gap: 5 }}>
+          {!isUser && (
+            <Avatar
+              variant={"small"}
+              firstName={recipient?.first_name}
+              lastName={recipient?.last_name}
             />
           )}
-          {item.msg?.length > 0 && (
-            <Text style={styles.msgStyle}>{item.msg}</Text>
-          )}
+          <View
+            style={{
+              justifyContent: "center",
+              alignItems: isUser ? "flex-end" : "flex-start",
+            }}
+          >
+            <View
+              style={[
+                styles.msgBubble,
+                isUser ? styles.userBubble : styles.otherBubble,
+              ]}
+            >
+              {doc?.media && (
+                <RenderMedia
+                  data={doc.media}
+                  onPressImage={(id) =>
+                    router.push({
+                      pathname: "photoView",
+                      params: {
+                        index: id,
+                        images: doc.media.map((val) => val.uri),
+                      },
+                    })
+                  }
+                />
+              )}
+              {doc?.msg?.length > 0 && (
+                <Text style={styles.msgStyle}>{doc?.msg}</Text>
+              )}
+            </View>
+            <Text
+              style={{
+                fontSize: 11,
+                justifyContent: "flex-end",
+                alignSelf: "flex-end",
+              }}
+            >
+              {formatCreatedAt(doc?.createdAt)}
+            </Text>
+          </View>
         </View>
       </View>
     );
