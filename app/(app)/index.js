@@ -1,10 +1,18 @@
 import React, { useEffect, useLayoutEffect, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import firestore from "@react-native-firebase/firestore";
 import { AntDesign } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { router, useNavigation } from "expo-router";
 import { setUser } from "../../store/authReducer";
+import Avatar from "../../components/Avatar";
 
 const Rooms = () => {
   const dispatch = useDispatch();
@@ -12,6 +20,7 @@ const Rooms = () => {
   const navigation = useNavigation();
   const [state, setState] = useState({
     roomsList: [],
+    refreshing: false,
   });
 
   useLayoutEffect(() => {
@@ -23,6 +32,11 @@ const Rooms = () => {
 
   useEffect(() => {
     getUserFromUserId();
+    getRooms();
+  }, []);
+
+  const onRefresh = React.useCallback(() => {
+    setState((prev) => ({ ...prev, refreshing: true }));
     getRooms();
   }, []);
 
@@ -43,7 +57,11 @@ const Rooms = () => {
       .where("user_ids", "array-contains", user_id)
       .get()
       .then((res) => {
-        setState((prev) => ({ ...prev, roomsList: res?._docs }));
+        setState((prev) => ({
+          ...prev,
+          roomsList: res?._docs,
+          refreshing: false,
+        }));
       })
       .catch((e) => console.log("e"));
   };
@@ -66,7 +84,7 @@ const Rooms = () => {
         style={styles.userCard}
         onPress={() => router.push({ pathname: "/chat", params: room })}
       >
-        <View style={styles.imageBox} />
+        <Avatar firstName={room?.first_name} lastName={room?.last_name} />
         <View>
           <Text>
             {room?.first_name} {room?.last_name}
@@ -82,6 +100,9 @@ const Rooms = () => {
       contentContainerStyle={styles.flatListContainerStyle}
       keyExtractor={(_, i) => i.toString()}
       renderItem={renderItem}
+      refreshControl={
+        <RefreshControl refreshing={state.refreshing} onRefresh={onRefresh} />
+      }
     />
   );
 };
@@ -96,12 +117,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     gap: 10,
-  },
-  imageBox: {
-    width: 50,
-    aspectRatio: 1,
-    backgroundColor: "rgb(245, 245, 245)",
-    borderRadius: 50 / 2,
   },
 });
 

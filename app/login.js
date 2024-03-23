@@ -25,7 +25,7 @@ const App = () => {
       .signInWithEmailAndPassword(state.email, state.password)
       .then((e) => {
         dispatch(setUserId(e.user.uid));
-        router.push("/");
+        router.replace("/");
       })
       .catch((error) => {
         console.error(error);
@@ -59,7 +59,7 @@ export default App;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
+    // justifyContent: "center",
     backgroundColor: "white",
     gap: 10,
     paddingHorizontal: 20,
