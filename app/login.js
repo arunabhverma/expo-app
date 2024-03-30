@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Button, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Button, StyleSheet, Text, TextInput, View } from "react-native";
 import auth from "@react-native-firebase/auth";
 import { Link, router } from "expo-router";
 import { setKeyboardHeight, setUserId } from "../store/authReducer";
@@ -28,6 +28,8 @@ const App = () => {
         router.replace("/");
       })
       .catch((error) => {
+        // Alert.alert(error);
+        // console.log("error", JSON.stringify(error));
         console.error(error);
       });
   };

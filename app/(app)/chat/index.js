@@ -38,14 +38,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSelector } from "react-redux";
 import Avatar from "../../../components/Avatar";
+import { fireNotification } from "../../../services/fireNotifications";
 
-const chatCollection = (room_id) => firestore().collection(`Chats-${room_id}`);
+const chatCollection = (room_id) =>
+  firestore().collection("Chats").doc(room_id).collection("chat");
 const roomCollection = firestore().collection("Rooms");
 
 const AnimatedVirtualizedList =
   Animated.createAnimatedComponent(VirtualizedList);
 
 const HEIGHT = Dimensions.get("window").height;
+const LIMIT = 15;
 
 const config = {
   duration: 300,
@@ -161,15 +164,24 @@ const ChatScreen = () => {
     }
   };
 
-  const getRoomChats = () => {
-    chatCollection(state?.room?.room_id)
-      .orderBy("createdAt", "desc")
+  const getRoomChats = async () => {
+    let query = chatCollection(state?.room?.room_id);
+
+    if (state?.data?.[state?.data?.length - 1] !== undefined) {
+      const lastDoc = state?.data?.[state?.data?.length - 1];
+      query = query.orderBy("createdAt", "desc").startAfter(lastDoc);
+    } else {
+      query = query.orderBy("createdAt", "desc");
+    }
+
+    query
+      .limit(LIMIT)
       .get()
       .then((res) => {
         setState((prev) => ({
           ...prev,
-          data: res?.docs,
-          isDataFetched: Date(),
+          data: [...prev.data, ...res?.docs],
+          isDataFetched: new Date().toISOString(),
         }));
       })
       .catch((e) => console.log("e", e));
@@ -177,7 +189,13 @@ const ChatScreen = () => {
 
   const setOnline = () => {};
 
-  const onEndReached = () => {};
+  const onEndReached = (e) => {
+    console.log("e", e.distanceFromEnd);
+    console.log("reached");
+    // if (state.data?.length > LIMIT - 1) {
+    getRoomChats();
+    // }
+  };
 
   useEffect(() => {
     if (isKeyboardOpen.open) {
@@ -233,11 +251,20 @@ const ChatScreen = () => {
   };
 
   const sendMsg = (data = []) => {
+    let newId = uuid.v4();
+
     let localMediaArray = data?.length > 0 ? { media: data } : {};
     setState((prev) => ({
       ...prev,
       data: [
-        { _data: { msg: prev.text, user_id, ...localMediaArray } },
+        {
+          _data: {
+            id: newId,
+            msg: prev.text,
+            user_id,
+            ...localMediaArray,
+          },
+        },
         ...prev.data,
       ],
       text: "",
@@ -256,14 +283,21 @@ const ChatScreen = () => {
           }
         });
         let data = {
+          id: newId,
           user_id: user_id,
           msg: state.text,
-          createdAt: Date(),
+          createdAt: new Date().toISOString(),
         };
         if (mediaArray.length > 0) {
           data.media = mediaArray;
         }
         chatCollection(state?.room?.room_id).add(data);
+        fireNotification({
+          msg: state.text,
+          recipient: recipient,
+          user_id: user_id,
+          image: mediaArray,
+        });
       })
       .catch((e) => {
         Alert.alert("Error! try again");
@@ -438,7 +472,7 @@ const ChatScreen = () => {
           initialNumToRender={20}
           maxToRenderPerBatch={20}
           windowSize={16}
-          onEndReachedThreshold={0.5}
+          onEndReachedThreshold={0.2}
           onEndReached={onEndReached}
           contentContainerStyle={styles.flatListStyle}
           style={[
