@@ -1,5 +1,11 @@
-import React, { useEffect, useLayoutEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
@@ -10,15 +16,40 @@ import {
 import firestore from "@react-native-firebase/firestore";
 import { AntDesign } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
-import { router, useNavigation } from "expo-router";
-import { setUser } from "../../store/authReducer";
+import uuid from "react-native-uuid";
+import { SplashScreen, router, useNavigation } from "expo-router";
+import { setDeviceToken, setUser } from "../../store/authReducer";
 import Avatar from "../../components/Avatar";
+
+import notifee, { EventType } from "@notifee/react-native";
+import messaging from "@react-native-firebase/messaging";
+import {
+  onAppBootstrap,
+  onMessageReceived,
+  getPermission,
+} from "../../services/notification";
+import store from "../../store";
+
+notifee.onForegroundEvent(({ type, detail }) => {
+  if (type === EventType.PRESS && detail.pressAction.id) {
+    navigate("NotificationScreen");
+  }
+});
+getPermission();
+onAppBootstrap()
+  .then((token) => store.dispatch(setDeviceToken(token)))
+  .catch((_) => {});
+// messaging().onMessage(onMessageReceived);
+messaging().setBackgroundMessageHandler(onMessageReceived);
+
+// SplashScreen.preventAutoHideAsync();
 
 const Rooms = () => {
   const dispatch = useDispatch();
-  const { user_id } = useSelector((state) => state.auth);
+  const { user_id, deviceToken } = useSelector((state) => state.auth);
   const navigation = useNavigation();
   const [state, setState] = useState({
+    isLoading: false,
     roomsList: [],
     refreshing: false,
   });
@@ -31,9 +62,53 @@ const Rooms = () => {
   }, [navigation]);
 
   useEffect(() => {
+    // SplashScreen.hideAsync();
+    if (deviceToken && user_id) {
+      firestore()
+        .collection("fcm-tokens")
+        .where("user_id", "==", user_id)
+        .get()
+        .then((res) => {
+          if (res.docs.length > 0) {
+            firestore().collection("fcm-tokens").doc(user_id).update({
+              fcm_token: deviceToken,
+            });
+          } else {
+            firestore().collection("fcm-tokens").doc(user_id).set({
+              id: uuid.v4(),
+              user_id: user_id,
+              fcm_token: deviceToken,
+            });
+          }
+        });
+    }
+  }, [deviceToken, user_id]);
+
+  useEffect(() => {
+    notifee.setBadgeCount(0);
+  }, []);
+
+  useEffect(() => {
+    bootstrap()
+      .then(() => {})
+      .catch((e) => {
+        console.log("APP_BOOTSTRAP_ERROR", e);
+      });
+  }, []);
+
+  useEffect(() => {
     getUserFromUserId();
     getRooms();
   }, []);
+
+  const bootstrap = async () => {
+    const initialNotification = await notifee.getInitialNotification();
+
+    if (initialNotification) {
+      alert("Notification click");
+      // navigate("NotificationScreen");
+    }
+  };
 
   const onRefresh = React.useCallback(() => {
     setState((prev) => ({ ...prev, refreshing: true }));
@@ -52,6 +127,7 @@ const Rooms = () => {
   };
 
   const getRooms = () => {
+    setState((prev) => ({ ...prev, isLoading: true }));
     firestore()
       .collection("Rooms")
       .where("user_ids", "array-contains", user_id)
@@ -61,6 +137,7 @@ const Rooms = () => {
           ...prev,
           roomsList: res?._docs,
           refreshing: false,
+          isLoading: false,
         }));
       })
       .catch((e) => console.log("e"));
@@ -94,10 +171,22 @@ const Rooms = () => {
       </Pressable>
     );
   };
+
+  const ListEmptyComponent = useCallback(() => {
+    if (state.isLoading && state.roomsList?.length === 0) {
+      return (
+        <View style={{ paddingTop: 20 }}>
+          <ActivityIndicator size={"large"} />
+        </View>
+      );
+    }
+  }, [state.isLoading, state.roomsList]);
+
   return (
     <FlatList
       data={state.roomsList}
       contentContainerStyle={styles.flatListContainerStyle}
+      ListEmptyComponent={ListEmptyComponent}
       keyExtractor={(_, i) => i.toString()}
       renderItem={renderItem}
       refreshControl={

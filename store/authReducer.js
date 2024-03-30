@@ -6,6 +6,7 @@ const authSlice = createSlice({
     user_id: "",
     user: {},
     keyboardHeight: 0,
+    deviceToken: "",
   },
   reducers: {
     setUserId: (state, action) => {
@@ -17,8 +18,12 @@ const authSlice = createSlice({
     setKeyboardHeight: (state, action) => {
       state.keyboardHeight = action?.payload;
     },
+    setDeviceToken: (state, action) => {
+      state.deviceToken = action?.payload;
+    },
   },
 });
 
-export const { setUserId, setUser, setKeyboardHeight } = authSlice.actions;
+export const { setUserId, setUser, setKeyboardHeight, setDeviceToken } =
+  authSlice.actions;
 export default authSlice.reducer;
