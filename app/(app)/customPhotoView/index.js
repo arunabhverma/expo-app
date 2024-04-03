@@ -4,13 +4,7 @@ import {
   useIsFocused,
 } from "@react-navigation/native";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import AwesomeGallery from "react-native-awesome-gallery";
 import * as React from "react";
 import { Image } from "expo-image";
@@ -61,13 +55,6 @@ const Photos = () => {
 
   const [infoVisible, setInfoVisible] = useState(true);
 
-  useEffect(() => {
-    StatusBar.setBarStyle(isFocused ? "light-content" : "dark-content", true);
-    if (!isFocused) {
-      StatusBar.setHidden(false, "fade");
-    }
-  }, [isFocused]);
-
   const onIndexChange = useCallback(
     (index) => {
       isFocused && setParams({ index });
@@ -76,25 +63,6 @@ const Photos = () => {
   );
 
   const onTap = () => {
-    // if (infoVisible) {
-    //   setOptions({
-    //     headerTitle: "Hello",
-    //     headerShown: false,
-    //     navigationBarHidden: true,
-    //     statusBarHidden: true,
-    //   });
-    //   setInfoVisible(false);
-    // } else {
-    //   setOptions({
-    //     headerTitle: "world",
-    //     headerShown: true,
-    //     navigationBarHidden: false,
-    //     statusBarHidden: false,
-    //   });
-    //   setInfoVisible(true);
-
-    //   // StatusBar.setHidden(infoVisible, "slide");
-    // }
     setInfoVisible(!infoVisible);
   };
 

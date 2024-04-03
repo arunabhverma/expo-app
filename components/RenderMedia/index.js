@@ -1,19 +1,16 @@
-import {
-  Dimensions,
-  FlatList,
-  Image,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Dimensions, StyleSheet, Text, View } from "react-native";
 import React from "react";
 import PressableOpacity from "../PressableOpacity";
+import { Image } from "expo-image";
 
 const MAX_WIDTH = Dimensions.get("window").width * 0.8;
 
 const RenderOneImage = ({ uri, onPressImage }) => {
   return (
-    <PressableOpacity onPress={() => onPressImage(0)}>
+    <PressableOpacity
+      style={{ backgroundColor: "rgba(0, 0, 0, 0.1)" }}
+      onPress={() => onPressImage(0)}
+    >
       <Image
         source={{ uri: uri }}
         style={{
@@ -35,23 +32,29 @@ const RenderTwoImage = ({ data, onPressImage }) => {
         gap: 5,
       }}
     >
-      <PressableOpacity style={{ flex: 1 }} onPress={() => onPressImage(0)}>
+      <PressableOpacity
+        style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.1)" }}
+        onPress={() => onPressImage(0)}
+      >
         <Image
           source={{ uri: data[0].uri }}
+          contentFit="cover"
           style={{
             flex: 1,
             backgroundColor: "rgba(0, 0, 0, 0.1)",
-            resizeMode: "cover",
           }}
         />
       </PressableOpacity>
-      <PressableOpacity style={{ flex: 1 }} onPress={() => onPressImage(1)}>
+      <PressableOpacity
+        style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.1)" }}
+        onPress={() => onPressImage(1)}
+      >
         <Image
           source={{ uri: data[1].uri }}
+          contentFit="cover"
           style={{
             flex: 1,
             backgroundColor: "rgba(0, 0, 0, 0.1)",
-            resizeMode: "cover",
           }}
         />
       </PressableOpacity>
@@ -69,34 +72,43 @@ const RenderThreeImage = ({ data, onPressImage }) => {
         gap: 5,
       }}
     >
-      <PressableOpacity style={{ flex: 1 }} onPress={() => onPressImage(0)}>
+      <PressableOpacity
+        style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.1)" }}
+        onPress={() => onPressImage(0)}
+      >
         <Image
           source={{ uri: data[0].uri }}
+          contentFit="cover"
           style={{
             flex: 1,
             backgroundColor: "rgba(0, 0, 0, 0.1)",
-            resizeMode: "cover",
           }}
         />
       </PressableOpacity>
       <View style={{ flex: 1, gap: 5 }}>
-        <PressableOpacity style={{ flex: 1 }} onPress={() => onPressImage(1)}>
+        <PressableOpacity
+          style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.1)" }}
+          onPress={() => onPressImage(1)}
+        >
           <Image
             source={{ uri: data[1].uri }}
+            contentFit="cover"
             style={{
               flex: 1,
               backgroundColor: "rgba(0, 0, 0, 0.1)",
-              resizeMode: "cover",
             }}
           />
         </PressableOpacity>
-        <PressableOpacity style={{ flex: 1 }} onPress={() => onPressImage(2)}>
+        <PressableOpacity
+          style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.1)" }}
+          onPress={() => onPressImage(2)}
+        >
           <Image
             source={{ uri: data[2].uri }}
+            contentFit="cover"
             style={{
               flex: 1,
               backgroundColor: "rgba(0, 0, 0, 0.1)",
-              resizeMode: "cover",
             }}
           />
         </PressableOpacity>
@@ -116,40 +128,53 @@ const RenderFourImage = ({ data, onPressImage }) => {
       }}
     >
       <View style={{ flex: 1, gap: 5 }}>
-        <PressableOpacity style={{ flex: 1 }} onPress={() => onPressImage(0)}>
+        <PressableOpacity
+          style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.1)" }}
+          onPress={() => onPressImage(0)}
+        >
           <Image
             source={{ uri: data[0].uri }}
+            contentFit="cover"
             style={{
               flex: 1,
               backgroundColor: "rgba(0, 0, 0, 0.1)",
-              resizeMode: "cover",
             }}
           />
         </PressableOpacity>
-        <PressableOpacity style={{ flex: 1 }} onPress={() => onPressImage(1)}>
+        <PressableOpacity
+          style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.1)" }}
+          onPress={() => onPressImage(1)}
+        >
           <Image
             source={{ uri: data[1].uri }}
+            contentFit="cover"
             style={{
               flex: 1,
               backgroundColor: "rgba(0, 0, 0, 0.1)",
-              resizeMode: "cover",
             }}
           />
         </PressableOpacity>
       </View>
       <View style={{ flex: 1, gap: 5 }}>
-        <PressableOpacity style={{ flex: 1 }} onPress={() => onPressImage(2)}>
+        <PressableOpacity
+          style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.1)" }}
+          onPress={() => onPressImage(2)}
+        >
           <Image
             source={{ uri: data[2].uri }}
+            contentFit="cover"
             style={{
               flex: 1,
               backgroundColor: "rgba(0, 0, 0, 0.1)",
-              resizeMode: "cover",
             }}
           />
         </PressableOpacity>
         <PressableOpacity
-          style={{ flex: 1, position: "relative" }}
+          style={{
+            flex: 1,
+            position: "relative",
+            backgroundColor: "rgba(0, 0, 0, 0.1)",
+          }}
           onPress={() => onPressImage(3)}
         >
           {data.length > 4 && (
@@ -171,10 +196,10 @@ const RenderFourImage = ({ data, onPressImage }) => {
           )}
           <Image
             source={{ uri: data[3].uri }}
+            contentFit="cover"
             style={{
               flex: 1,
               backgroundColor: "rgba(0, 0, 0, 0.1)",
-              resizeMode: "cover",
             }}
           />
         </PressableOpacity>
@@ -205,10 +230,6 @@ const RenderMedia = ({ data, onPressImage }) => {
       }}
     >
       <RenderGrid data={data} onPressImage={onPressImage} />
-
-      {/* {data.map((item, index) => (
-        <RenderImage {...{ item, index }} />
-      ))} */}
     </View>
   );
 };

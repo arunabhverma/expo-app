@@ -9,6 +9,8 @@ import {
   Dimensions,
   Alert,
 } from "react-native";
+import { Image as ImageCompressor } from "react-native-compressor";
+
 import _ from "lodash";
 import moment from "moment";
 import Animated, {
@@ -30,7 +32,6 @@ import EmojiKeyboard from "./emojiKeyboard";
 import CustomTextInput from "./customTextInput";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import PressableOpacity from "../../../components/PressableOpacity";
 import RenderMedia from "../../../components/RenderMedia";
@@ -190,11 +191,7 @@ const ChatScreen = () => {
   const setOnline = () => {};
 
   const onEndReached = (e) => {
-    console.log("e", e.distanceFromEnd);
-    console.log("reached");
-    // if (state.data?.length > LIMIT - 1) {
     getRoomChats();
-    // }
   };
 
   useEffect(() => {
@@ -250,7 +247,34 @@ const ChatScreen = () => {
     return Promise.all(imagePromises);
   };
 
-  const sendMsg = (data = []) => {
+  const compressor = (imageData) => {
+    if (imageData.length === 0) {
+      return Promise.resolve([]);
+    }
+
+    const imagePromises = [];
+
+    for (let i = 0; i < imageData.length; i++) {
+      let image = imageData[i];
+      const uploadUri =
+        Platform.OS === "ios" ? image.uri.replace("file://", "") : image.uri;
+      imagePromises.push(
+        new Promise((resolve, reject) => {
+          ImageCompressor.compress(uploadUri)
+            .then((snapshot) => {
+              resolve({ ...image, uri: snapshot });
+            })
+            .catch((error) => {
+              reject(error);
+            });
+        })
+      );
+    }
+
+    return Promise.all(imagePromises);
+  };
+
+  const sendMsg = async (data = []) => {
     let newId = uuid.v4();
 
     let localMediaArray = data?.length > 0 ? { media: data } : {};
@@ -269,40 +293,35 @@ const ChatScreen = () => {
       ],
       text: "",
     }));
-    uploadImage(data)
-      .then((res) => {
-        let mediaArray = res.map((item) => {
-          if (item.metadata !== undefined) {
-            return {
-              uri: `https://firebasestorage.googleapis.com/v0/b/${
-                item?.metadata?.bucket
-              }/o/${encodeURIComponent(item?.metadata?.fullPath)}?alt=media`,
-            };
-          } else {
-            return item;
-          }
-        });
-        let data = {
-          id: newId,
-          user_id: user_id,
-          msg: state.text,
-          createdAt: new Date().toISOString(),
+    let compressed = await compressor(data);
+    let res = await uploadImage(compressed);
+    let mediaArray = res.map((item) => {
+      if (item.metadata !== undefined) {
+        return {
+          uri: `https://firebasestorage.googleapis.com/v0/b/${
+            item?.metadata?.bucket
+          }/o/${encodeURIComponent(item?.metadata?.fullPath)}?alt=media`,
         };
-        if (mediaArray.length > 0) {
-          data.media = mediaArray;
-        }
-        chatCollection(state?.room?.room_id).add(data);
-        fireNotification({
-          msg: state.text,
-          recipient: recipient,
-          user_id: user_id,
-          image: mediaArray,
-        });
-      })
-      .catch((e) => {
-        Alert.alert("Error! try again");
-        console.log("e", e);
-      });
+      } else {
+        return item;
+      }
+    });
+    let post_data = {
+      id: newId,
+      user_id: user_id,
+      msg: state.text,
+      createdAt: new Date().toISOString(),
+    };
+    if (mediaArray.length > 0) {
+      post_data.media = mediaArray;
+    }
+    chatCollection(state?.room?.room_id).add(post_data);
+    fireNotification({
+      msg: state.text,
+      recipient: recipient,
+      user_id: user_id,
+      image: mediaArray,
+    });
     listRef?.current?.scrollToOffset?.({ offset: 0, animated: false });
   };
 
@@ -441,7 +460,6 @@ const ChatScreen = () => {
 
   return (
     <View style={{ flex: 1 }}>
-      <StatusBar style="dark" />
       <View
         pointerEvents="none"
         style={{
@@ -487,6 +505,7 @@ const ChatScreen = () => {
       )}
       <CustomTextInput
         ref={inputRef}
+        disabled={state.text.trim().length === 0}
         onFocus={openKeyboard}
         value={state.text}
         dropImagesFromOutside={state.imageData}

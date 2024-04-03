@@ -7,17 +7,9 @@ export default function Layout() {
 
   React.useEffect(() => {
     navigation.setOptions({
-      //   headerShown: true,
       headerTransparent: true,
       headerTintColor: "white",
-      // statusBarStyle: "light",
-      // statusBarTranslucent: false,
-      // headerBackground: "red",
-
-      // headerTintColor: "white",
       headerStyle: { backgroundColor: "rgba(0, 0, 0, 0.5)" },
-      statusBarStyle: "white",
-      statusBarColor: "black",
     });
   }, [navigation]);
 
