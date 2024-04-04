@@ -40,10 +40,14 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useSelector } from "react-redux";
 import Avatar from "../../../components/Avatar";
 import { fireNotification } from "../../../services/fireNotifications";
+import { formatCreatedAt } from "../../../utils";
 
 const chatCollection = (room_id) =>
   firestore().collection("Chats").doc(room_id).collection("chat");
 const roomCollection = firestore().collection("Rooms");
+const updateRoomCollection = firestore().collection("Rooms");
+const unReadCollection = (room_id) =>
+  firestore().collection("Unread").doc(room_id);
 
 const AnimatedVirtualizedList =
   Animated.createAnimatedComponent(VirtualizedList);
@@ -55,19 +59,6 @@ const config = {
   duration: 300,
   easing: Easing.out(Easing.exp),
 };
-
-function formatCreatedAt(createdAt) {
-  const now = moment();
-  const created = moment(createdAt);
-
-  if (now.diff(created, "days") < 2) {
-    // If created within last 2 days, show relative time
-    return created.fromNow();
-  } else {
-    // Otherwise, show the date
-    return created.format("D MMMM YYYY");
-  }
-}
 
 const ChatScreen = () => {
   const { user, user_id, keyboardHeight } = useSelector((state) => state.auth);
@@ -97,7 +88,14 @@ const ChatScreen = () => {
 
   useEffect(() => {
     getRoomId();
-  }, []);
+    getCount();
+  }, [state.room?.room_id]);
+
+  const getCount = () => {
+    unReadCollection(state.room?.room_id)
+      .get()
+      .then((res) => console.log("res", res.data()));
+  };
 
   useEffect(() => {
     if (state.room?.room_id && user_id && state.isDataFetched) {
@@ -316,6 +314,18 @@ const ChatScreen = () => {
       post_data.media = mediaArray;
     }
     chatCollection(state?.room?.room_id).add(post_data);
+    unReadCollection(state.room?.room_id)
+      .get()
+      .then((res) => {
+        unReadCollection(state?.room?.room_id).set({
+          ...res.data(),
+          [recipient_id]: {
+            count: (res.data()?.[recipient_id]?.count || 0) + 1,
+            last_chat: post_data,
+          },
+        });
+      });
+
     fireNotification({
       msg: state.text,
       recipient: recipient,
