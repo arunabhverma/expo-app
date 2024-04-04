@@ -3,11 +3,12 @@ import {
   useRoute,
   useIsFocused,
 } from "@react-navigation/native";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { StatusBar, StyleSheet, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import AwesomeGallery from "react-native-awesome-gallery";
 import * as React from "react";
 import { Image } from "expo-image";
+import * as StatusBar from "expo-status-bar";
 
 const renderItem = ({ item, setImageDimensions }) => {
   return (
@@ -15,6 +16,7 @@ const renderItem = ({ item, setImageDimensions }) => {
       source={item.uri}
       style={StyleSheet.absoluteFillObject}
       contentFit="contain"
+      placeholder={"LEHV6nWB2yk8pyo0adR*.7kCMdnj"}
       onLoad={(e) => {
         const { width, height } = e.source;
         setImageDimensions({ width, height });
@@ -36,11 +38,14 @@ const Photos = () => {
 
   const [infoVisible, setInfoVisible] = useState(true);
 
-  useEffect(() => {
-    StatusBar.setBarStyle(isFocused ? "light-content" : "dark-content", true);
-    if (!isFocused) {
-      StatusBar.setHidden(false, "fade");
-    }
+  React.useEffect(() => {
+    StatusBar.setStatusBarTranslucent(true);
+    StatusBar.setStatusBarStyle("light");
+    StatusBar.setStatusBarBackgroundColor("rgba(0,0,0,0)");
+    return () => {
+      StatusBar.setStatusBarStyle("dark");
+      StatusBar.setStatusBarBackgroundColor("white");
+    };
   }, [isFocused]);
 
   const onIndexChange = useCallback(

@@ -4,17 +4,17 @@ import { Entypo, Feather, MaterialIcons } from "@expo/vector-icons";
 import PressableOpacity from "../../../../components/PressableOpacity";
 import PasteInput from "@mattermost/react-native-paste-input";
 import DataStrap from "../../../../components/DataStrap";
-import { useNavigation } from "expo-router";
 import { router } from "expo-router";
 
 const CustomTextInput = React.forwardRef((props, ref) => {
-  const navigation = useNavigation();
   const imageScroll = useRef(null);
   const [state, setState] = useState({
     imageData: [],
     isOpen: false,
     openImageIndex: null,
   });
+
+  const disabled = props.disabled && state.imageData.length === 0;
 
   useEffect(() => {
     onPasteImage(false, props.dropImagesFromOutside);
@@ -97,8 +97,14 @@ const CustomTextInput = React.forwardRef((props, ref) => {
             {...props}
           />
         </View>
-        <View style={styles.sendButtonWrapper}>
+        <View
+          style={[
+            styles.sendButtonWrapper,
+            disabled && { backgroundColor: "#66b4ff" },
+          ]}
+        >
           <PressableOpacity
+            disabled={disabled}
             style={styles.sendButtonStyle}
             onPress={onSendPress}
           >

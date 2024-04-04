@@ -16,7 +16,7 @@ export default function Layout() {
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <KeyboardProvider>
+          <KeyboardProvider enabled={false}>
             <BottomSheetModalProvider>
               <SafeAreaProvider>
                 <Stack />
