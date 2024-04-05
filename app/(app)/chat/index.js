@@ -7,12 +7,9 @@ import {
   VirtualizedList,
   Keyboard,
   Dimensions,
-  Alert,
 } from "react-native";
 import { Image as ImageCompressor } from "react-native-compressor";
-
 import _ from "lodash";
-import moment from "moment";
 import Animated, {
   Easing,
   Extrapolate,
@@ -45,9 +42,8 @@ import { formatCreatedAt } from "../../../utils";
 const chatCollection = (room_id) =>
   firestore().collection("Chats").doc(room_id).collection("chat");
 const roomCollection = firestore().collection("Rooms");
-const updateRoomCollection = firestore().collection("Rooms");
-const unReadCollection = (room_id) =>
-  firestore().collection("Unread").doc(room_id);
+const updateRoomCollection = (room_id) =>
+  firestore().collection("Rooms").doc(room_id);
 
 const AnimatedVirtualizedList =
   Animated.createAnimatedComponent(VirtualizedList);
@@ -88,14 +84,17 @@ const ChatScreen = () => {
 
   useEffect(() => {
     getRoomId();
-    getCount();
   }, [state.room?.room_id]);
 
-  const getCount = () => {
-    unReadCollection(state.room?.room_id)
-      .get()
-      .then((res) => console.log("res", res.data()));
-  };
+  useEffect(() => {
+    let roomUpdate = {};
+    roomUpdate[`${user_id}.count`] = 0;
+    if (state.room?.room_id) {
+      return () => {
+        updateRoomCollection(state?.room?.room_id).update(roomUpdate);
+      };
+    }
+  }, [state.room?.room_id]);
 
   useEffect(() => {
     if (state.room?.room_id && user_id && state.isDataFetched) {
@@ -142,7 +141,8 @@ const ChatScreen = () => {
           } else {
             let uid = uuid.v4();
             roomCollection
-              ?.add({
+              .doc(uid)
+              ?.set({
                 room_id: uid,
                 user_ids: [recipient_id, user_id],
                 users: [user, recipient],
@@ -314,13 +314,13 @@ const ChatScreen = () => {
       post_data.media = mediaArray;
     }
     chatCollection(state?.room?.room_id).add(post_data);
-    unReadCollection(state.room?.room_id)
+
+    updateRoomCollection(state?.room?.room_id)
       .get()
       .then((res) => {
-        unReadCollection(state?.room?.room_id).set({
-          ...res.data(),
+        updateRoomCollection(state?.room?.room_id).update({
           [recipient_id]: {
-            count: (res.data()?.[recipient_id]?.count || 0) + 1,
+            count: (res?.data()?.[recipient_id]?.count || 0) + 1,
             last_chat: post_data,
           },
         });

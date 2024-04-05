@@ -102,6 +102,22 @@ const Rooms = () => {
     getRooms();
   }, []);
 
+  useEffect(() => {
+    const subscriber = firestore()
+      .collection("Rooms")
+      .where("user_ids", "array-contains", user_id)
+      .onSnapshot((res) => {
+        setState((prev) => ({
+          ...prev,
+          roomsList: res.docs,
+          refreshing: false,
+          isLoading: false,
+        }));
+      });
+
+    return () => subscriber();
+  }, []);
+
   const bootstrap = async () => {
     const initialNotification = await notifee.getInitialNotification();
 
@@ -134,20 +150,9 @@ const Rooms = () => {
       .where("user_ids", "array-contains", user_id)
       .get()
       .then(async (res) => {
-        let data = await Promise.all(
-          res.docs.map(async (item) => {
-            const roomData = item.data();
-            const unreadData = await firestore()
-              .collection("Unread")
-              .doc(roomData.room_id)
-              .get()
-              .then((val) => val?.data());
-            return { ...roomData, unreadData };
-          })
-        );
         setState((prev) => ({
           ...prev,
-          roomsList: data,
+          roomsList: res.docs,
           refreshing: false,
           isLoading: false,
         }));
@@ -157,7 +162,7 @@ const Rooms = () => {
         console.log("e", e);
       });
   };
-  console.log("state", state.roomsList);
+
   const headerRight = () => {
     return (
       <Pressable
@@ -171,8 +176,9 @@ const Rooms = () => {
   };
 
   const renderItem = ({ item, index }) => {
-    let room = item?.users?.find((item) => item?.user_id !== user_id);
-    let unRead = item?.unreadData?.[user_id];
+    let room = item?.data().users?.find((item) => item?.user_id !== user_id);
+    let unRead = item?.data()?.[user_id];
+
     return (
       <Pressable
         style={styles.userCard}
@@ -180,39 +186,20 @@ const Rooms = () => {
       >
         <Avatar firstName={room?.first_name} lastName={room?.last_name} />
         <View style={{ flex: 1 }}>
-          <View
-            style={{
-              flex: 1,
-              flexDirection: "row",
-              justifyContent: "space-between",
-            }}
-          >
+          <View style={styles.rowContainer}>
             <Text>
               {room?.first_name} {room?.last_name}
             </Text>
             <Text>{formatCreatedAt(unRead?.last_chat?.createdAt)}</Text>
           </View>
-          <View
-            style={{
-              flex: 1,
-              flexDirection: "row",
-              justifyContent: "space-between",
-            }}
-          >
-            <Text numberOfLines={1}>
-              {unRead?.last_chat?.msg || room?.email}
-            </Text>
+          <View style={styles.rowContainer}>
+            <View style={{ flex: 1 }}>
+              <Text numberOfLines={1} style={{ fontSize: 12, color: "gray" }}>
+                {unRead?.last_chat?.msg || room?.email}
+              </Text>
+            </View>
             {unRead?.count > 0 && (
-              <View
-                style={{
-                  width: 20,
-                  height: 20,
-                  backgroundColor: "red",
-                  borderRadius: 20,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
+              <View style={styles.badge}>
                 <Text style={{ color: "white" }}>{unRead?.count || 0}</Text>
               </View>
             )}
@@ -282,6 +269,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     gap: 10,
+  },
+  rowContainer: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  badge: {
+    width: 20,
+    height: 20,
+    backgroundColor: "red",
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 
